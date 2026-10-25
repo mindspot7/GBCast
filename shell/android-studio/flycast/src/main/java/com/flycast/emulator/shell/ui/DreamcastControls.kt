@@ -68,16 +68,22 @@ object DreamcastControls : ControlsHost {
     override var hotkeyCapture by androidx.compose.runtime.mutableStateOf<HotkeyAction?>(null)
     override var hotkeyCaptureKeys by androidx.compose.runtime.mutableStateOf<Set<Int>>(emptySet())
     private var ffActive = false
+    private var ffToggleState by androidx.compose.runtime.mutableStateOf(false)
+    private var touchState by androidx.compose.runtime.mutableStateOf(true)
 
     override val hotkeys: Map<HotkeyAction, Set<Int>> get() = storedHotkeys
 
     override var fastForwardToggle: Boolean
-        get() = preferences().getBoolean(PREF_FF_TOGGLE, false)
-        set(value) { preferences().edit().putBoolean(PREF_FF_TOGGLE, value).apply() }
+        get() = ffToggleState
+        set(value) {
+            ffToggleState = value
+            preferences().edit().putBoolean(PREF_FF_TOGGLE, value).apply()
+        }
 
     override var showTouchControls: Boolean
-        get() = preferences().getBoolean(PREF_TOUCH, true)
+        get() = touchState
         set(value) {
+            touchState = value
             preferences().edit().putBoolean(PREF_TOUCH, value).apply()
             if (!value) VGamepad.hide()
         }
@@ -89,6 +95,8 @@ object DreamcastControls : ControlsHost {
         prefs = PreferenceManager.getDefaultSharedPreferences(context.applicationContext)
         keyMap = readKeyMap()
         storedHotkeys = readHotkeys()
+        ffToggleState = prefs.getBoolean(PREF_FF_TOGGLE, false)
+        touchState = prefs.getBoolean(PREF_TOUCH, true)
     }
 
     private fun readKeyMap(): Map<Int, String> {

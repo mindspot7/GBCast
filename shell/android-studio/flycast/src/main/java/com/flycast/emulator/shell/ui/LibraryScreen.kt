@@ -89,7 +89,7 @@ import kotlinx.coroutines.withContext
 fun LibraryScreen(
     onOpenSettings: (SettingsPage) -> Unit,
     onQuit: () -> Unit,
-    launch: (String, Int) -> Unit,
+    launch: (String, Int, Boolean) -> Unit,
 ) {
     var menuOpen by MenuState.open
     val style by HomeTheme.style
@@ -201,12 +201,12 @@ fun LibraryScreen(
         onOpenSettings(it)
     }
     val actions = HomeActions(
-        play = { launch(it.key, -1) },
+        play = { launch(it.key, -1, false) },
         fresh = { launch(it.key, -1, true) },
         options = { gameMenu = it },
         resume = { entry ->
             val slot = entry.key.substringAfterLast('#').toIntOrNull() ?: 0
-            launch(entry.game, slot)
+            launch(entry.game, slot, false)
         },
         openMenu = { menuOpen = true },
     )

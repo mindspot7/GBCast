@@ -419,13 +419,16 @@ private fun GameOptions(
 @Composable
 private fun HelpBar() {
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color.Black.copy(alpha = .28f)).padding(horizontal = 14.dp, vertical = 6.dp),
+        Modifier.fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(palette.panel)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.End,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ButtonHint("A", Color(0xFFE5483B), "Play")
-        ButtonHint("Y", Color(0xFF3BB273), "Game options")
-        ButtonHint("X", Color(0xFF3B7BE5), "Theme")
-        ButtonHint("B", Color(0xFFF2C230), "Menu")
+        ButtonHint("A", gb.frame.PadColors.A, "Play")
+        ButtonHint("Y", gb.frame.PadColors.Y, "Game options")
+        ButtonHint("X", gb.frame.PadColors.X, "Theme")
+        ButtonHint("B", gb.frame.PadColors.B, "Menu")
     }
 }

@@ -1,6 +1,7 @@
 package com.flycast.emulator.shell
 
 import android.os.Bundle
+import android.util.Log
 import android.view.InputDevice
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
@@ -26,11 +27,19 @@ class LibraryActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        DreamcastControls.initialize(this)
-        val error = runCatching { FlycastBridge.start(this) }.exceptionOrNull()
+        val error = runCatching {
+            DreamcastControls.initialize(this)
+            FlycastBridge.start(this)
+        }.exceptionOrNull()
+        if (error != null) {
+            Log.e("GBCastStartup", "Failed to initialize GBCast launcher", error)
+        }
         setControllerContent {
             if (error != null) {
-                androidx.compose.material3.Text("Flycast failed to start: ${error.message}")
+                androidx.compose.material3.Text(
+                    "GBCast failed to initialize. Please send this message to support:\\n" +
+                        (error.message ?: error.javaClass.simpleName)
+                )
             } else {
                 GBCastRoot(onQuit = ::quit)
             }

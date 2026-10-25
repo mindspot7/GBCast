@@ -44,11 +44,10 @@ jobs:
 
       - name: Gradle
         working-directory: shell/android-studio
-        run: ./gradlew assembleRelease bundleRelease --parallel
+        # APK only. The App Bundle (.aab) is built for an official numbered release, when asked for.
+        run: ./gradlew assembleRelease --parallel
 
       - uses: actions/upload-artifact@v7
         with:
           name: gbcast-release
-          path: |
-            shell/android-studio/flycast/build/outputs/apk/release/*.apk
-            shell/android-studio/flycast/build/outputs/bundle/release/*.aab
+          path: shell/android-studio/flycast/build/outputs/apk/release/*.apk

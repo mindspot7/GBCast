@@ -38,7 +38,7 @@ object FlycastBridge {
         HomeTheme.init(prefs)
         LibraryView.init(prefs)
         PlayTime.init(prefs)
-        Covers.init(File(app.filesDir, "gbcast"), "Sega - Dreamcast")
+        Covers.init(File(app.filesDir, "gbcast"), "Sega - Dreamcast", frameAspectRatio = 1.0f)
         app.ensureCore()?.let { error -> throw IllegalStateException(error) }
         val savedSlot = int("config", "Dreamcast.SavestateSlot")
         if (savedSlot !in 0 until SaveData.MANUAL_SAVE_STATE_SLOTS) {

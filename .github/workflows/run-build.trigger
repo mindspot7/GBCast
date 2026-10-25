@@ -1,4 +1,5 @@
 Controlled build trigger. Update this file only when an intentional GBCast validation build is requested.
 
-Validation commit: c66871cd0556f77b21970e5d45975b82624afb7e
-Build request: shared GBFrame UI and RA login guard 2026-10-25
+
+Validation commit: c58056ae98f6bb7c0c8755f87ab966bc81f518a2
+Build request: AutoMirrored volume icon fix 2026-10-25

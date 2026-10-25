@@ -9,8 +9,8 @@ import java.io.File
 import java.nio.file.Files
 
 /**
- * Games folder through the Storage Access Framework. GDI and CUE stay as staged symlinks so relative track names resolve.
- * Single-file images are copied to a real cache file because Flycast reopens them by path.
+ * Games folder through the Storage Access Framework. Discs are copied to real cache files because Flycast reopens
+ * tracks by path, and some handhelds refuse a symlink to /proc/self/fd.
  */
 private object GamesFolder {
     var path: String = ""
@@ -21,7 +21,6 @@ object Storage : SafGames(GameIndex.extensions, { GamesFolder.path }) {
         get() = GamesFolder.path
         set(value) { GamesFolder.path = value }
     private lateinit var app: Context
-    private val copyExt = setOf("cdi", "chd", "zip", "7z", "dat", "lst", "bin")
 
     fun start(context: Context) {
         app = context.applicationContext
@@ -30,20 +29,36 @@ object Storage : SafGames(GameIndex.extensions, { GamesFolder.path }) {
 
     fun openForCore(path: String): OpenDisc? {
         val ext = fileName(path).substringAfterLast('.', "").lowercase()
-        if (ext == "chd") return open(path, stageCopy = true)
-        val opened = open(path) ?: return null
-        if (ext !in copyExt) return opened
+        val opened = open(path, stageCopy = ext == "chd") ?: return null
+        return materialize(opened)
+    }
+
+    /**
+     * Flycast reopens every track by path. A symlink to /proc/self/fd is refused on some handhelds, so the staged
+     * descriptor and its sibling tracks are copied to ordinary cache files before the core sees them.
+     */
+    private fun materialize(opened: OpenDisc): OpenDisc? {
         val src = File(opened.path)
-        if (src.isFile && !Files.isSymbolicLink(src.toPath())) return opened
-        val destDir = File(app.cacheDir, "disc-real").apply { mkdirs() }
-        val dest = File(destDir, src.name)
+        val parent = src.parentFile
+        if (!src.exists() || parent == null) return opened
+        val files = parent.listFiles()?.filter { it.isFile || Files.isSymbolicLink(it.toPath()) }.orEmpty()
+        if (files.none { Files.isSymbolicLink(it.toPath()) }) return opened
+        val destDir = File(app.cacheDir, "disc-real").apply { deleteRecursively(); mkdirs() }
         val copied = runCatching {
-            src.inputStream().use { input -> dest.outputStream().use { output -> input.copyTo(output) } }
-            dest.isFile && dest.length() > 0L
+            files.forEach { file ->
+                val dest = File(destDir, file.name)
+                file.inputStream().use { input -> dest.outputStream().use { output -> input.copyTo(output) } }
+                if (!dest.isFile || dest.length() <= 0L) error("empty copy ${file.name}")
+            }
+            true
         }.getOrDefault(false)
-        if (!copied) return opened
+        if (!copied) {
+            opened.close()
+            return null
+        }
+        val main = File(destDir, src.name)
         opened.close()
-        return OpenDisc(dest.absolutePath, emptyList())
+        return OpenDisc(main.absolutePath, emptyList())
     }
 
     fun importFile(uri: Uri, destDir: File): String? {

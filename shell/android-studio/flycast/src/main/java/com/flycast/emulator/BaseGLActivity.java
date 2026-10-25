@@ -1,7 +1,6 @@
 package com.flycast.emulator;
 
 import android.Manifest;
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -23,6 +22,7 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.window.OnBackInvokedDispatcher;
 
+import androidx.activity.ComponentActivity;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
@@ -45,7 +45,7 @@ import static android.view.WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACK
 import static android.view.WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION;
 import static android.view.WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS;
 
-public abstract class BaseGLActivity extends Activity implements ActivityCompat.OnRequestPermissionsResultCallback {
+public abstract class BaseGLActivity extends ComponentActivity implements ActivityCompat.OnRequestPermissionsResultCallback {
     private static final int STORAGE_PERM_REQUEST = 1001;
     private static final int AUDIO_PERM_REQUEST = 1002;
 

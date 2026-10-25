@@ -153,7 +153,7 @@ static void setPad(int v) { config::MapleMainDevices[0] = (MapleDeviceType)v; }
 static int getVibe() { return config::VirtualGamepadVibration; }
 static void setVibe(int v) { config::VirtualGamepadVibration = v; }
 static int getSlot() { return config::SavestateSlot; }
-static void setSlot(int v) { config::SavestateSlot = v; }
+static void setSlot(int v) { config::SavestateSlot = v < 0 || v >= 5 ? 0 : v; }
 static int getSkip() { return config::SkipFrame; }
 static void setSkip(int v) { config::SkipFrame = v; }
 static int getAutoSkip() { return config::AutoSkipFrame; }
@@ -455,3 +455,4 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_raCurre
 extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_raCurrentGame(JNIEnv *env, jclass) { return env->NewStringUTF("\t0\t0\t0\t0\t\t0"); }
 extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_raAchievements(JNIEnv *env, jclass) { return env->NewStringUTF(""); }
 #endif
+

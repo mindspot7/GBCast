@@ -18,10 +18,9 @@ object GBCastCheatsBackend : CheatsBackend {
     private var revision by mutableIntStateOf(0)
 
     override val cheats: List<CheatUiItem>
-        get() {
+        get() = revision.let {
             // Observe mutations so GBFrame recomposes its list after enable/add/delete/import.
-            val observedRevision = revision
-            return (0 until JNIdc.cheatCount()).mapNotNull { index ->
+            (0 until JNIdc.cheatCount()).mapNotNull { index ->
                 if (JNIdc.cheatBuiltIn(index)) return@mapNotNull null
                 CheatUiItem(
                     id = index.toString(),
@@ -85,7 +84,7 @@ object GBCastCheatsBackend : CheatsBackend {
         var imported = 0
         for ((lineIndex, line) in sourceLines.withIndex()) {
             val equals = line.indexOf('=')
-            val named = equals > 0 && !line.substringBefore('=').trim().matches(Regex("[0-9A-Fa-f ]+"))
+            val named = equals > 0
             val name = if (named) line.substringBefore('=').trim() else "Imported cheat ${lineIndex + 1}"
             val code = if (named) line.substringAfter('=').trim() else line
             val result = add(name, code)

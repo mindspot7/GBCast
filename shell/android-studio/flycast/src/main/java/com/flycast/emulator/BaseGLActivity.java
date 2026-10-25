@@ -1,5 +1,6 @@
 package com.flycast.emulator;
 
+import app.gbcast.emulator.R;
 import android.Manifest;
 import android.app.AlertDialog;
 import android.content.DialogInterface;

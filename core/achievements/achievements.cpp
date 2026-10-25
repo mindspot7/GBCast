@@ -454,11 +454,12 @@ void Achievements::clientLoginWithTokenCallback(int result, const char *error_me
 
 std::future<void> Achievements::login(const char* username, const char* password)
 {
-	init();
+ 	init();
+	config::EnableAchievements = true;
 	config::AchievementsUserName = username;
 	SaveSettings();
 	loginPending = true;
-	raLoginError.clear();
+	setLoginError("");
 	std::promise<void> *promise = new std::promise<void>();
 	auto future = promise->get_future();
 	rc_client_begin_login_with_password(rc_client, username, password, clientLoginWithPasswordCallback, promise);
@@ -508,6 +509,7 @@ void Achievements::logout()
 	rc_client_logout(rc_client);
 	// Reset token in config
 	config::AchievementsToken = "";
+	config::EnableAchievements = false;
 	SaveSettings();
 	loggedOn = false;
 	loginPending = false;
@@ -519,6 +521,7 @@ void Achievements::loginWithToken(const char *username, const char *token)
 	init();
 	if (rc_client == nullptr || loggedOn)
 		return;
+	config::EnableAchievements = true;
 	config::AchievementsUserName = username ? username : "";
 	config::AchievementsToken = token ? token : "";
 	SaveSettings();
@@ -530,7 +533,6 @@ void Achievements::loginWithToken(const char *username, const char *token)
 void Achievements::setHardcore(bool enabled)
 {
 	config::AchievementsHardcoreMode = enabled;
-	settings.raHardcoreMode = enabled;
 	if (rc_client != nullptr)
 		rc_client_set_hardcore_enabled(rc_client, enabled ? 1 : 0);
 	SaveSettings();

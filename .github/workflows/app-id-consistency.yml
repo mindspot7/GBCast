@@ -1,0 +1,29 @@
+name: App ID consistency
+
+on:
+  push:
+    branches: [android-port]
+    paths:
+      - 'shell/android-studio/flycast/build.gradle.kts'
+      - 'shell/android-studio/flycast/src/main/AndroidManifest.xml'
+      - 'tools/check-app-id.sh'
+      - 'tools/gbcast.ps1'
+      - '.github/workflows/app-id-consistency.yml'
+  pull_request:
+    paths:
+      - 'shell/android-studio/flycast/build.gradle.kts'
+      - 'shell/android-studio/flycast/src/main/AndroidManifest.xml'
+      - 'tools/check-app-id.sh'
+      - 'tools/gbcast.ps1'
+      - '.github/workflows/app-id-consistency.yml'
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+      - name: Check application ID, namespace, launcher and device tools
+        run: bash tools/check-app-id.sh

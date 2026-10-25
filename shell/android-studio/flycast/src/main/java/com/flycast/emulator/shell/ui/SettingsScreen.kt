@@ -166,7 +166,7 @@ fun SettingsScreen(onBack: () -> Unit, toast: (String) -> Unit, page: SettingsPa
                         appName = "GBCast",
                         manufacturer = "Sega",
                         console = "Dreamcast",
-                        icon = painterResource(R.drawable.ic_gbcast),
+                        icon = painterResource(R.mipmap.ic_launcher),
                         credits = listOf(
                             AboutCredit("Flycast", "Emulation core for Dreamcast, Naomi, Naomi 2 and Atomiswave."),
                             AboutCredit("GBFrame", "Shared Android interface, settings, controls and menu components."),
@@ -344,3 +344,4 @@ private fun ExtrasPage(tick: Int, cfg: Cfg) {
 /** Find a native enum value in the labels list, falling back to the first available option. */
 private fun indexOf(@Suppress("UNUSED_PARAMETER") tick: Int, values: IntArray, value: Int): Int =
     values.indexOf(value).takeIf { it >= 0 } ?: 0
+

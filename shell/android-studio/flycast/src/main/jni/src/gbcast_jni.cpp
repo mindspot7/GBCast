@@ -3,12 +3,14 @@
 #include "cfg/option.h"
 #include "emulator.h"
 #include "cheats.h"
+#include "achievements/achievements.h"
 #include "imgread/common.h"
 #include "stdclass.h"
 #include "ui/gui.h"
 
 #include <climits>
 #include <string>
+#include <sstream>
 
 // GBCast reads and writes Flycast's real config::Option objects. Unknown keys are ignored.
 
@@ -200,6 +202,13 @@ static std::string jstr(JNIEnv *env, jstring value) {
 	return out;
 }
 
+static std::string cleanTabField(std::string value) {
+	for (char &c : value)
+		if (c == '\\t' || c == '\\r' || c == '\\n')
+			c = ' ';
+	return value;
+}
+
 } // namespace
 
 extern "C" JNIEXPORT jboolean JNICALL Java_com_flycast_emulator_emu_JNIdc_configGetBool(JNIEnv *env, jclass, jstring section, jstring name) {
@@ -352,3 +361,93 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_addGame
 		return env->NewStringUTF("Flycast could not parse that GameShark code.");
 	}
 }
+
+#ifdef USE_RACHIEVEMENTS
+extern "C" JNIEXPORT jboolean JNICALL Java_com_flycast_emulator_emu_JNIdc_raInit(JNIEnv *, jclass) {
+	return achievements::init() ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_raLogin(JNIEnv *env, jclass, jstring username, jstring password) {
+	(void)achievements::login(jstr(env, username).c_str(), jstr(env, password).c_str());
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_raLoginWithToken(JNIEnv *env, jclass, jstring username, jstring token) {
+	achievements::loginWithToken(jstr(env, username).c_str(), jstr(env, token).c_str());
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_raLogout(JNIEnv *, jclass) {
+	achievements::logout();
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_raSetHardcore(JNIEnv *, jclass, jboolean enabled) {
+	achievements::setHardcore(enabled == JNI_TRUE);
+}
+
+extern "C" JNIEXPORT jboolean JNICALL Java_com_flycast_emulator_emu_JNIdc_raIsLoggedOn(JNIEnv *, jclass) {
+	return achievements::isLoggedOn() ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL Java_com_flycast_emulator_emu_JNIdc_raIsActive(JNIEnv *, jclass) {
+	return achievements::isActive() ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL Java_com_flycast_emulator_emu_JNIdc_raIsLoginPending(JNIEnv *, jclass) {
+	return achievements::isLoginPending() ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL Java_com_flycast_emulator_emu_JNIdc_raIsHardcore(JNIEnv *, jclass) {
+	return achievements::isHardcore() ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_raLoginError(JNIEnv *env, jclass) {
+	return env->NewStringUTF(cleanTabField(achievements::lastLoginError()).c_str());
+}
+
+extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_raCurrentUser(JNIEnv *env, jclass) {
+	const achievements::User user = achievements::getCurrentUser();
+	std::ostringstream out;
+	out << cleanTabField(user.username) << '\\t' << cleanTabField(user.token) << '\\t'
+			<< cleanTabField(user.avatarUrl) << '\\t' << user.score << '\\t' << user.softcoreScore;
+	return env->NewStringUTF(out.str().c_str());
+}
+
+extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_raCurrentGame(JNIEnv *env, jclass) {
+	const achievements::Game game = achievements::getCurrentGame();
+	std::ostringstream out;
+	out << cleanTabField(game.title) << '\\t' << game.unlockedAchievements << '\\t' << game.totalAchievements
+			<< '\\t' << game.points << '\\t' << game.totalPoints << '\\t' << cleanTabField(game.imageUrl)
+			<< '\\t' << (game.hardcore ? 1 : 0);
+	return env->NewStringUTF(out.str().c_str());
+}
+
+extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_raAchievements(JNIEnv *env, jclass) {
+	const achievements::Game game = achievements::getCurrentGame();
+	if (game.title.empty())
+		return env->NewStringUTF("");
+	std::ostringstream out;
+	out << "#\\t" << cleanTabField(game.title) << '\\t' << game.unlockedAchievements << '\\t'
+			<< game.totalAchievements << '\\t' << game.points << '\\t' << game.totalPoints << '\\t'
+			<< cleanTabField(game.imageUrl) << "\\t\\t" << (game.hardcore ? 1 : 0) << '\\n';
+	for (const auto &item : achievements::getAchievementList()) {
+		out << item.id << '\\t' << cleanTabField(item.title) << '\\t' << cleanTabField(item.description)
+				<< '\\t' << item.points << '\\t' << (item.unlocked ? 1 : 0) << '\\t'
+				<< cleanTabField(item.imageUrl) << '\\t' << cleanTabField(item.lockedImageUrl) << '\\t'
+				<< cleanTabField(item.progress) << '\\t' << cleanTabField(item.category) << '\\n';
+	}
+	return env->NewStringUTF(out.str().c_str());
+}
+#else
+extern "C" JNIEXPORT jboolean JNICALL Java_com_flycast_emulator_emu_JNIdc_raInit(JNIEnv *, jclass) { return JNI_FALSE; }
+extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_raLogin(JNIEnv *, jclass, jstring, jstring) {}
+extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_raLoginWithToken(JNIEnv *, jclass, jstring, jstring) {}
+extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_raLogout(JNIEnv *, jclass) {}
+extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_raSetHardcore(JNIEnv *, jclass, jboolean) {}
+extern "C" JNIEXPORT jboolean JNICALL Java_com_flycast_emulator_emu_JNIdc_raIsLoggedOn(JNIEnv *, jclass) { return JNI_FALSE; }
+extern "C" JNIEXPORT jboolean JNICALL Java_com_flycast_emulator_emu_JNIdc_raIsActive(JNIEnv *, jclass) { return JNI_FALSE; }
+extern "C" JNIEXPORT jboolean JNICALL Java_com_flycast_emulator_emu_JNIdc_raIsLoginPending(JNIEnv *, jclass) { return JNI_FALSE; }
+extern "C" JNIEXPORT jboolean JNICALL Java_com_flycast_emulator_emu_JNIdc_raIsHardcore(JNIEnv *, jclass) { return JNI_FALSE; }
+extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_raLoginError(JNIEnv *env, jclass) { return env->NewStringUTF("RetroAchievements is not enabled in this build."); }
+extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_raCurrentUser(JNIEnv *env, jclass) { return env->NewStringUTF("E\\t\\t\\t0\\t0"); }
+extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_raCurrentGame(JNIEnv *env, jclass) { return env->NewStringUTF("\\t0\\t0\\t0\\t0\\t\\t0"); }
+extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_raAchievements(JNIEnv *env, jclass) { return env->NewStringUTF(""); }
+#endif

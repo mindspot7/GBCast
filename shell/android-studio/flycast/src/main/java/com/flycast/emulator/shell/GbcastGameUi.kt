@@ -140,15 +140,15 @@ object GbcastGameUi {
     @Composable
     private fun QuickMenu(activity: Activity) {
         var tick by androidx.compose.runtime.remember { mutableIntStateOf(0) }
-        val wide = tick.let { JNIdc.configGetBool("config", "rend.WideScreen") }
-        val vsync = tick.let { JNIdc.configGetBool("config", "rend.vsync") }
-        val perGame = tick.let { JNIdc.hasPerGameConfig() }
         val discPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
             if (uri == null) return@rememberLauncherForActivityResult
             val copied = Storage.importFile(uri, File(activity.cacheDir, "disc-swap"))
             message = if (copied == null) "Could not read that disc" else JNIdc.insertDisk(copied) ?: "Disc inserted. Resume to continue."
         }
         val rootPage = gb.frame.QuickMenuPage(id = "gbcast-root", title = "Quick Menu") {
+            val wide = tick.let { JNIdc.configGetBool("config", "rend.WideScreen") }
+            val vsync = tick.let { JNIdc.configGetBool("config", "rend.vsync") }
+            val perGame = tick.let { JNIdc.hasPerGameConfig() }
             gb.frame.QuickMenuItemRow(
                 id = "resume",
                 icon = Icons.Default.PlayArrow,

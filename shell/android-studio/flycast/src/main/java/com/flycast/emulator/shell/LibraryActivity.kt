@@ -9,6 +9,8 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.flycast.emulator.shell.ui.GBCastRoot
+import com.flycast.emulator.shell.ui.DreamcastControls
+import gb.frame.ControlsCapture
 import com.flycast.emulator.shell.ui.MenuState
 import gb.frame.HomeTheme
 import gb.frame.PlayTime
@@ -23,6 +25,7 @@ class LibraryActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        DreamcastControls.initialize(this)
         val error = runCatching { FlycastBridge.start(this) }.exceptionOrNull()
         setControllerContent {
             if (error != null) {
@@ -57,6 +60,7 @@ class LibraryActivity : ComponentActivity() {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (ControlsCapture.dispatch(event, DreamcastControls)) return true
         if (event.keyCode == KeyEvent.KEYCODE_BUTTON_B && event.action == KeyEvent.ACTION_DOWN) {
             lastGamepadBAt = event.eventTime
             lastGamepadBDevice = event.deviceId

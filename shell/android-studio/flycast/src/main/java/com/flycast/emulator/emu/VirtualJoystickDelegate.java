@@ -266,8 +266,12 @@ public class VirtualJoystickDelegate implements TouchEventHandler
     @Override
     public void show()
     {
-        VGamepad.show();
         this.handler.removeCallbacks(hideVGamepadRunnable);
-        this.handler.postDelayed(hideVGamepadRunnable, 10000);
+        if (com.flycast.emulator.shell.ui.DreamcastControls.INSTANCE.getShowTouchControls()) {
+            VGamepad.show();
+            this.handler.postDelayed(hideVGamepadRunnable, 10000);
+        } else {
+            VGamepad.hide();
+        }
     }
 }

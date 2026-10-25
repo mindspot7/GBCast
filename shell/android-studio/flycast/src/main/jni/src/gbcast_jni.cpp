@@ -271,6 +271,10 @@ extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_restartGam
 		gui_start_game(path);
 }
 
+extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_setFastForwardMode(JNIEnv *, jclass, jboolean enabled) {
+    settings.input.fastForwardMode = enabled == JNI_TRUE;
+}
+
 extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_saveCurrentSlot(JNIEnv *, jclass) {
 	const bool running = gui_state == GuiState::Closed;
 	gui_saveState(running, false);

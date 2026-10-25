@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -53,6 +54,8 @@ import com.flycast.emulator.shell.FlycastBridge
 import com.flycast.emulator.shell.Storage
 import gb.frame.ActionRow
 import gb.frame.ChoiceRow
+import gb.frame.ControlsPage
+import gb.frame.ControlsCapturePrompts
 import gb.frame.InfoRow
 import gb.frame.SettingsDivider
 import gb.frame.SettingsGroup
@@ -114,7 +117,8 @@ fun SettingsScreen(onBack: () -> Unit, toast: (String) -> Unit, page: SettingsPa
         }
     }
 
-    Column(Modifier.fillMaxSize().safeDrawingPadding()) {
+    Box(Modifier.fillMaxSize()) {
+      Column(Modifier.fillMaxSize().safeDrawingPadding()) {
         TopAppBar(
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -140,13 +144,27 @@ fun SettingsScreen(onBack: () -> Unit, toast: (String) -> Unit, page: SettingsPa
                     SettingsPage.Video -> VideoPage(tick, cfg)
                     SettingsPage.Audio -> AudioPage(tick, cfg)
                     SettingsPage.Performance -> PerformancePage(tick, cfg)
-                    SettingsPage.Controls -> ControlsPage(tick, cfg)
+                    SettingsPage.Controls -> ControlsPage(DreamcastControls) {
+                        val devices = intArrayOf(0, 18, 5, 6, 7, 8, 10)
+                        val selected = indexOf(tick, devices, cfg.int("input", "device1"))
+                        val vibeValues = intArrayOf(0, 20, 50, 80)
+                        val vibe = indexOf(tick, vibeValues, cfg.int("input", "VirtualGamepadVibration"))
+                        ChoiceRow("Port A", "Controller type for the first Dreamcast port", listOf("Pad", "XL", "Key", "Mouse", "Gun", "Twin", "None"), selected) {
+                            cfg.setInt("input", "device1", devices[it])
+                        }
+                        SettingsDivider()
+                        ChoiceRow("Touch vibration", "Vibration strength for the on-screen controls", listOf("Off", "Low", "Mid", "High"), vibe) {
+                            cfg.setInt("input", "VirtualGamepadVibration", vibeValues[it])
+                        }
+                    }
                     SettingsPage.Extras -> ExtrasPage(tick, cfg)
                     SettingsPage.About -> AboutPage()
                 }
                 Spacer(Modifier.height(24.dp))
             }
         }
+      }
+      ControlsCapturePrompts(DreamcastControls)
     }
 }
 
@@ -284,27 +302,6 @@ private fun PerformancePage(tick: Int, cfg: Cfg) {
     }
 }
 
-@Composable
-private fun ControlsPage(tick: Int, cfg: Cfg) {
-    val devices = intArrayOf(0, 18, 5, 6, 7, 8, 10)
-    val selected = indexOf(tick, devices, cfg.int("input", "device1"))
-    val vibeValues = intArrayOf(0, 20, 50, 80)
-    val vibe = indexOf(tick, vibeValues, cfg.int("input", "VirtualGamepadVibration"))
-    SettingsGroup("Maple", Icons.Default.SportsEsports) {
-        ChoiceRow("Port A", "input.device1. The other ports stay as Flycast saved them.", listOf("Pad", "XL", "Key", "Mouse", "Gun", "Twin", "None"), selected) {
-            cfg.setInt("input", "device1", devices[it])
-        }
-        SettingsDivider()
-        ChoiceRow("Touch vibration", "VirtualGamepadVibration", listOf("Off", "Low", "Mid", "High"), vibe) {
-            cfg.setInt("input", "VirtualGamepadVibration", vibeValues[it])
-        }
-        SettingsDivider()
-        InfoRow(
-            "Button mapping",
-            "Per-button maps are edited in Flycast's own settings during a game (quick menu, Emulator settings). That screen writes the real maple maps. B in a game stays a game button.",
-        )
-    }
-}
 
 @Composable
 private fun ExtrasPage(tick: Int, cfg: Cfg) {

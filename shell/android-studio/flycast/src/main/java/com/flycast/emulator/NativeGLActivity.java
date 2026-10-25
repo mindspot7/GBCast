@@ -17,6 +17,9 @@ import android.widget.RelativeLayout;
 import androidx.annotation.Nullable;
 
 import com.flycast.emulator.emu.NativeGLView;
+import com.flycast.emulator.emu.VGamepad;
+import com.flycast.emulator.shell.ui.DreamcastControls;
+import gb.frame.Hotkeys;
 import com.flycast.emulator.periph.InputDeviceManager;
 
 public final class NativeGLActivity extends BaseGLActivity {
@@ -40,8 +43,29 @@ public final class NativeGLActivity extends BaseGLActivity {
 
         setContentView(mLayout);
         com.flycast.emulator.shell.GbcastGameUi.attach(this, mLayout, mView);
+        DreamcastControls.configureHotkeys(this);
         wantLoad = getIntent().getBooleanExtra("gbcast_load_state", false);
         Log.i("flycast", "NativeGLActivity.onCreate done");
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (!com.flycast.emulator.shell.GbcastGameUi.getMenuOwnsKeys() &&
+                event.getKeyCode() != KeyEvent.KEYCODE_BACK &&
+                (event.getAction() == KeyEvent.ACTION_DOWN || event.getAction() == KeyEvent.ACTION_UP)) {
+            boolean wasSuppressed = Hotkeys.INSTANCE.isSuppressed(event.getKeyCode());
+            boolean consumed = Hotkeys.INSTANCE.onKey(event.getKeyCode(), event.getAction() == KeyEvent.ACTION_DOWN);
+            if (consumed || wasSuppressed || Hotkeys.INSTANCE.isSuppressed(event.getKeyCode()))
+                return true;
+
+            int mapped = DreamcastControls.mapKeyCode(event.getKeyCode());
+            if (mapped != event.getKeyCode()) {
+                return super.dispatchKeyEvent(new KeyEvent(event.getDownTime(), event.getEventTime(), event.getAction(),
+                        mapped, event.getRepeatCount(), event.getMetaState(), event.getDeviceId(), event.getScanCode(),
+                        event.getFlags(), event.getSource()));
+            }
+        }
+        return super.dispatchKeyEvent(event);
     }
 
     private boolean wantLoad;
@@ -85,7 +109,8 @@ public final class NativeGLActivity extends BaseGLActivity {
         runOnUiThread(new Runnable() {
             public void run() {
                 if (started) {
-                    mView.showVGamepad();
+                    if (DreamcastControls.INSTANCE.getShowTouchControls()) mView.showVGamepad();
+                    else VGamepad.hide();
                     if (wantLoad)
                         handler.post(NativeGLActivity.this::tryLoadState);
                 }

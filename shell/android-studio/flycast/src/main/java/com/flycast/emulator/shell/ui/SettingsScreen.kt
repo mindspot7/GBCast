@@ -340,3 +340,7 @@ private fun ExtrasPage(tick: Int, cfg: Cfg) {
     }
     gb.frame.RetroAchievementsSettings("GBCast")
 }
+
+/** Find a native enum value in the labels list, falling back to the first available option. */
+private fun indexOf(@Suppress("UNUSED_PARAMETER") tick: Int, values: IntArray, value: Int): Int =
+    values.indexOf(value).takeIf { it >= 0 } ?: 0

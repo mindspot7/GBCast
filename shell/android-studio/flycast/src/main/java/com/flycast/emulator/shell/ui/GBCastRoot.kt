@@ -26,6 +26,7 @@ import gb.frame.PresetOption
 import gb.frame.PresetPicker
 import gb.frame.SetupWizard
 import gb.frame.WizardStep
+import gb.frame.MenuState
 import kotlinx.coroutines.launch
 
 private enum class Screen { Library, Settings }
@@ -141,3 +142,4 @@ fun GBCastRoot(onQuit: () -> Unit) {
         }
     }
 }
+

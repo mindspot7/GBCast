@@ -48,10 +48,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import app.gbcast.emulator.R
 import com.flycast.emulator.shell.FlycastBridge
 import com.flycast.emulator.shell.Storage
+import gb.frame.AboutCredit
+import gb.frame.AboutPage
 import gb.frame.ActionRow
 import gb.frame.ChoiceRow
 import gb.frame.ControlsPage
@@ -158,7 +162,18 @@ fun SettingsScreen(onBack: () -> Unit, toast: (String) -> Unit, page: SettingsPa
                         }
                     }
                     SettingsPage.Extras -> ExtrasPage(tick, cfg)
-                    SettingsPage.About -> AboutPage()
+                    SettingsPage.About -> AboutPage(
+                        appName = "GBCast",
+                        manufacturer = "Sega",
+                        console = "Dreamcast",
+                        icon = painterResource(R.drawable.ic_gbcast),
+                        credits = listOf(
+                            AboutCredit("Flycast", "Emulation core for Dreamcast, Naomi, Naomi 2 and Atomiswave."),
+                            AboutCredit("GBFrame", "Shared Android interface, settings, controls and menu components."),
+                            AboutCredit("GBCast", "Android frontend and integration with Flycast."),
+                        ),
+                        license = "See the GBCast repository LICENSE and Flycast's upstream license notices for the full terms that apply to each component.",
+                    )
                 }
                 Spacer(Modifier.height(24.dp))
             }
@@ -327,22 +342,4 @@ private fun ExtrasPage(tick: Int, cfg: Cfg) {
         SettingsDivider()
         ToggleRow(Icons.Default.Info, "Upload crash logs", null, cfg.bool("config", "UploadCrashLogs")) { cfg.toggle("config", "UploadCrashLogs") }
     }
-}
-
-@Composable
-private fun AboutPage() {
-    SettingsGroup("GBCast", Icons.Default.Info) {
-        InfoRow("Application", "GBCast uses the Flycast core for Dreamcast, Naomi, Naomi 2 and Atomiswave.")
-        SettingsDivider()
-        InfoRow("Application id", "com.flycast.emulator")
-        SettingsDivider()
-        InfoRow("Interface", "Library, themes and focus come from GBFrame. Layout changes only from the menu Theme tile.")
-        SettingsDivider()
-        InfoRow("Not wired in this screen", "Flycast login, cheats and the full control map open from the quick menu's Emulator settings, which is the core's own UI.")
-    }
-}
-
-private fun indexOf(tick: Int, values: IntArray, current: Int): Int {
-    val found = values.indexOf(current)
-    return if (found >= 0) found else 0.also { tick.hashCode() }
 }

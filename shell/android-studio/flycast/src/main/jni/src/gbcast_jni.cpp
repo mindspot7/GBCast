@@ -204,7 +204,7 @@ static std::string jstr(JNIEnv *env, jstring value) {
 
 static std::string cleanTabField(std::string value) {
 	for (char &c : value)
-		if (c == '\\t' || c == '\\r' || c == '\\n')
+		if (c == '\t' || c == '\r' || c == '\n')
 			c = ' ';
 	return value;
 }
@@ -368,11 +368,15 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_flycast_emulator_emu_JNIdc_raInit
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_raLogin(JNIEnv *env, jclass, jstring username, jstring password) {
-	(void)achievements::login(jstr(env, username).c_str(), jstr(env, password).c_str());
+	const std::string user = jstr(env, username);
+	const std::string passwordText = jstr(env, password);
+	(void)achievements::login(user.c_str(), passwordText.c_str());
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_raLoginWithToken(JNIEnv *env, jclass, jstring username, jstring token) {
-	achievements::loginWithToken(jstr(env, username).c_str(), jstr(env, token).c_str());
+	const std::string user = jstr(env, username);
+	const std::string savedToken = jstr(env, token);
+	achievements::loginWithToken(user.c_str(), savedToken.c_str());
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_raLogout(JNIEnv *, jclass) {
@@ -406,17 +410,17 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_raLogin
 extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_raCurrentUser(JNIEnv *env, jclass) {
 	const achievements::User user = achievements::getCurrentUser();
 	std::ostringstream out;
-	out << cleanTabField(user.username) << '\\t' << cleanTabField(user.token) << '\\t'
-			<< cleanTabField(user.avatarUrl) << '\\t' << user.score << '\\t' << user.softcoreScore;
+	out << cleanTabField(user.username) << '\t' << cleanTabField(user.token) << '\t'
+			<< cleanTabField(user.avatarUrl) << '\t' << user.score << '\t' << user.softcoreScore;
 	return env->NewStringUTF(out.str().c_str());
 }
 
 extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_raCurrentGame(JNIEnv *env, jclass) {
 	const achievements::Game game = achievements::getCurrentGame();
 	std::ostringstream out;
-	out << cleanTabField(game.title) << '\\t' << game.unlockedAchievements << '\\t' << game.totalAchievements
-			<< '\\t' << game.points << '\\t' << game.totalPoints << '\\t' << cleanTabField(game.imageUrl)
-			<< '\\t' << (game.hardcore ? 1 : 0);
+	out << cleanTabField(game.title) << '\t' << game.unlockedAchievements << '\t' << game.totalAchievements
+			<< '\t' << game.points << '\t' << game.totalPoints << '\t' << cleanTabField(game.imageUrl)
+			<< '\t' << (game.hardcore ? 1 : 0);
 	return env->NewStringUTF(out.str().c_str());
 }
 
@@ -425,14 +429,14 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_raAchie
 	if (game.title.empty())
 		return env->NewStringUTF("");
 	std::ostringstream out;
-	out << "#\\t" << cleanTabField(game.title) << '\\t' << game.unlockedAchievements << '\\t'
-			<< game.totalAchievements << '\\t' << game.points << '\\t' << game.totalPoints << '\\t'
-			<< cleanTabField(game.imageUrl) << "\\t\\t" << (game.hardcore ? 1 : 0) << '\\n';
+	out << "#\t" << cleanTabField(game.title) << '\t' << game.unlockedAchievements << '\t'
+			<< game.totalAchievements << '\t' << game.points << '\t' << game.totalPoints << '\t'
+			<< cleanTabField(game.imageUrl) << "\t\t" << (game.hardcore ? 1 : 0) << '\n';
 	for (const auto &item : achievements::getAchievementList()) {
-		out << item.id << '\\t' << cleanTabField(item.title) << '\\t' << cleanTabField(item.description)
-				<< '\\t' << item.points << '\\t' << (item.unlocked ? 1 : 0) << '\\t'
-				<< cleanTabField(item.imageUrl) << '\\t' << cleanTabField(item.lockedImageUrl) << '\\t'
-				<< cleanTabField(item.progress) << '\\t' << cleanTabField(item.category) << '\\n';
+		out << item.id << '\t' << cleanTabField(item.title) << '\t' << cleanTabField(item.description)
+				<< '\t' << item.points << '\t' << (item.unlocked ? 1 : 0) << '\t'
+				<< cleanTabField(item.imageUrl) << '\t' << cleanTabField(item.lockedImageUrl) << '\t'
+				<< cleanTabField(item.progress) << '\t' << cleanTabField(item.category) << '\n';
 	}
 	return env->NewStringUTF(out.str().c_str());
 }
@@ -447,7 +451,7 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_flycast_emulator_emu_JNIdc_raIsAc
 extern "C" JNIEXPORT jboolean JNICALL Java_com_flycast_emulator_emu_JNIdc_raIsLoginPending(JNIEnv *, jclass) { return JNI_FALSE; }
 extern "C" JNIEXPORT jboolean JNICALL Java_com_flycast_emulator_emu_JNIdc_raIsHardcore(JNIEnv *, jclass) { return JNI_FALSE; }
 extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_raLoginError(JNIEnv *env, jclass) { return env->NewStringUTF("RetroAchievements is not enabled in this build."); }
-extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_raCurrentUser(JNIEnv *env, jclass) { return env->NewStringUTF("E\\t\\t\\t0\\t0"); }
-extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_raCurrentGame(JNIEnv *env, jclass) { return env->NewStringUTF("\\t0\\t0\\t0\\t0\\t\\t0"); }
+extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_raCurrentUser(JNIEnv *env, jclass) { return env->NewStringUTF("E\t\t\t0\t0"); }
+extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_raCurrentGame(JNIEnv *env, jclass) { return env->NewStringUTF("\t0\t0\t0\t0\t\t0"); }
 extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_raAchievements(JNIEnv *env, jclass) { return env->NewStringUTF(""); }
 #endif

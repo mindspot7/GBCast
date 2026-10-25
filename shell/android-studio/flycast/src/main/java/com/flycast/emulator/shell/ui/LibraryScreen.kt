@@ -62,7 +62,7 @@ import app.gbcast.emulator.R
 import com.flycast.emulator.shell.FlycastBridge
 import com.flycast.emulator.shell.GameIndex
 import com.flycast.emulator.shell.Storage
-import gb.frame.ButtonHint
+import gb.frame.HomeHelpBar
 import gb.frame.Covers
 import gb.frame.ConfirmDialog
 import gb.frame.HomeActions
@@ -262,7 +262,7 @@ fun LibraryScreen(
                     focusEnabled = !menuOpen && gameMenu == null && !confirmQuit,
                 )
             }
-            if (!fullscreen && hasPad && HomeTheme.buttonHelp.value) HelpBar()
+            if (!fullscreen && hasPad && HomeTheme.buttonHelp.value) HomeHelpBar()
         }
         if (fullscreen && !menuOpen) {
             Box(
@@ -416,16 +416,3 @@ private fun GameOptions(
     )
 }
 
-@Composable
-private fun HelpBar() {
-    Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color.Black.copy(alpha = .28f)).padding(horizontal = 14.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.End,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        ButtonHint("A", Color(0xFFE5483B), "Play")
-        ButtonHint("Y", Color(0xFF3BB273), "Game options")
-        ButtonHint("X", Color(0xFF3B7BE5), "Theme")
-        ButtonHint("B", Color(0xFFF2C230), "Menu")
-    }
-}

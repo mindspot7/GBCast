@@ -16,7 +16,7 @@ GBFrame is the git submodule `libs/gbframe` (commit `117ea1cef29c25efc44438ca96e
 
 Build the APK from `shell/android-studio` (`assembleRelease` or `assembleDebug`). The `Android` GitHub Actions workflow builds the APK; the separate `App ID consistency` workflow checks the application ID, namespace, launcher activity and device-tool settings. Run `bash tools/check-app-id.sh` locally for the same check. Device commands are available through `tools/gbcast.ps1` (requires `adb`; `Install` also requires authenticated `gh`). `git` must be on `PATH` because the version name is `git describe`.
 
-The in-app brand mark is `ic_gbcast.xml` in the Android app's resources. Pass this same artwork to GBFrame's `HomeTopBar`, `HomeMenuPanel`, and `AboutPage`; the launcher icon is a separate controller image. Development builds are named `GBCast-v<versionName>-build<runNumber>.apk`, and the Actions artifact uses the same stem. Numbered user releases should be named `GBCast-v<releaseVersion>.apk`, following the [GBFrame app integration standard](https://github.com/mindspot7/GBFrame/blob/main/docs/APP_INTEGRATION_STANDARD.md).
+Use the app launcher icon (`R.mipmap.ic_launcher`) for GBFrame's `HomeTopBar`, `HomeMenuPanel`, and `AboutPage`, so the same GBCast icon appears in the launcher, library, menu, and About page. Development builds are named `GBCast-v<versionName>-build<runNumber>.apk`, and the Actions artifact uses the same stem. Numbered user releases should be named `GBCast-v<releaseVersion>.apk`, following the [GBFrame app integration standard](https://github.com/mindspot7/GBFrame/blob/main/docs/APP_INTEGRATION_STANDARD.md).
 
 # Flycast
 

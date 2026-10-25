@@ -23,11 +23,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import gb.frame.QuickMenuHost
-import gb.frame.QuickMenuItemRow
-import gb.frame.QuickMenuPage
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -139,106 +136,71 @@ object GbcastGameUi {
 
     @Composable
     private fun QuickMenu(activity: Activity) {
+        val focus = androidx.compose.runtime.remember { FocusRequester() }
         var tick by androidx.compose.runtime.remember { mutableIntStateOf(0) }
+        val wide = tick.let { JNIdc.configGetBool("config", "rend.WideScreen") }
+        val vsync = tick.let { JNIdc.configGetBool("config", "rend.vsync") }
+        val perGame = tick.let { JNIdc.hasPerGameConfig() }
+        LaunchedEffect(Unit) {
+            repeat(8) {
+                if (runCatching { focus.requestFocus() }.isSuccess) return@LaunchedEffect
+                delay(50)
+            }
+        }
         val discPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
             if (uri == null) return@rememberLauncherForActivityResult
             val copied = Storage.importFile(uri, File(activity.cacheDir, "disc-swap"))
             message = if (copied == null) "Could not read that disc" else JNIdc.insertDisk(copied) ?: "Disc inserted. Resume to continue."
         }
-        val rootPage = gb.frame.QuickMenuPage(id = "gbcast-root", title = "Quick Menu") {
-            val wide = tick.let { JNIdc.configGetBool("config", "rend.WideScreen") }
-            val vsync = tick.let { JNIdc.configGetBool("config", "rend.vsync") }
-            val perGame = tick.let { JNIdc.hasPerGameConfig() }
-            gb.frame.QuickMenuItemRow(
-                id = "resume",
-                icon = Icons.Default.PlayArrow,
-                label = "Resume",
-            ) { dismiss() }
-            gb.frame.QuickMenuItemRow(
-                id = "save",
-                icon = Icons.Default.Save,
-                label = "Save state",
-                value = "Slot ${slot + 1}",
-            ) {
-                JNIdc.configSetInt("config", "Dreamcast.SavestateSlot", slot)
-                JNIdc.saveCurrentSlot()
-                message = "Saved slot ${slot + 1}"
-                tick++
-            }
-            gb.frame.QuickMenuItemRow(
-                id = "load",
-                icon = Icons.Default.Restore,
-                label = "Load state",
-                value = "Slot ${slot + 1}",
-            ) {
-                JNIdc.configSetInt("config", "Dreamcast.SavestateSlot", slot)
-                message = if (JNIdc.loadCurrentSlot()) "Loaded slot ${slot + 1}" else "No state in slot ${slot + 1}"
-                tick++
-            }
-            gb.frame.QuickMenuItemRow(
-                id = "previous-slot",
-                icon = Icons.Default.KeyboardArrowLeft,
-                label = "Previous slot",
-                value = "Slot ${(slot + 9) % 10 + 1}",
-            ) { slot = (slot + 9) % 10 }
-            gb.frame.QuickMenuItemRow(
-                id = "next-slot",
-                icon = Icons.Default.KeyboardArrowRight,
-                label = "Next slot",
-                value = "Slot ${(slot + 1) % 10 + 1}",
-            ) { slot = (slot + 1) % 10 }
-            gb.frame.QuickMenuItemRow(
-                id = "restart",
-                icon = Icons.Default.Refresh,
-                label = "Restart game",
-            ) {
-                JNIdc.restartGame()
-                visible = false
-                menuOwnsKeys = false
-                compose?.visibility = View.GONE
-                glView?.requestFocus()
-            }
-            gb.frame.QuickMenuItemRow(
-                id = "swap-disc",
-                icon = Icons.Default.Album,
-                label = "Swap disc",
-            ) { discPicker.launch(arrayOf("*/*")) }
-            ToggleRow(Icons.Default.Tv, "Widescreen", null, wide) {
-                JNIdc.configSetBool("config", "rend.WideScreen", it)
-                tick++
-            }
-            ToggleRow(Icons.Default.Tv, "VSync", null, vsync) {
-                JNIdc.configSetBool("config", "rend.vsync", it)
-                tick++
-            }
-            ToggleRow(Icons.Default.Info, "Per-game overrides", "Stores later changes in this game's Flycast section.", perGame) {
-                JNIdc.setPerGameConfig(it)
-                tick++
-            }
-            gb.frame.QuickMenuItemRow(
-                id = "settings",
-                icon = Icons.Default.Settings,
-                label = "Emulator settings",
-            ) { hideForNative(SETTINGS) }
-            gb.frame.QuickMenuItemRow(
-                id = "cheats",
-                icon = Icons.Default.Build,
-                label = "Cheats",
-            ) { hideForNative(CHEATS) }
-            gb.frame.QuickMenuItemRow(
-                id = "exit",
-                icon = Icons.Default.ExitToApp,
-                label = "Exit game",
-            ) { activity.finish() }
-            message?.let { Text(it, color = Color(0xFFFFB15A), modifier = Modifier.padding(12.dp)) }
-        }
         GBCastTheme {
-            gb.frame.QuickMenuHost(
-                rootPage = rootPage,
-                gameTitle = null,
-                onDismiss = ::resume,
-                modifier = Modifier.fillMaxSize(),
-            )
+            androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .45f))) {
+                Surface(
+                    color = Color(0xF0141C28),
+                    shape = RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp),
+                    modifier = Modifier.fillMaxHeight().widthIn(max = 420.dp).fillMaxWidth(0.92f),
+                ) {
+                    Column(Modifier.verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("GBCast", color = Color.White)
+                        TextButton(onClick = ::resume, modifier = Modifier.focusRequester(focus)) { Text("Resume") }
+                        TextButton(onClick = {
+                            JNIdc.configSetInt("config", "Dreamcast.SavestateSlot", slot)
+                            JNIdc.saveCurrentSlot()
+                            message = "Saved slot ${slot + 1}"
+                        }) { Text("Save slot ${slot + 1}") }
+                        TextButton(onClick = {
+                            JNIdc.configSetInt("config", "Dreamcast.SavestateSlot", slot)
+                            message = if (JNIdc.loadCurrentSlot()) "Loaded slot ${slot + 1}" else "No state in slot ${slot + 1}"
+                        }) { Text("Load slot ${slot + 1}") }
+                        TextButton(onClick = { slot = (slot + 9) % 10 }) { Text("Previous slot") }
+                        TextButton(onClick = { slot = (slot + 1) % 10 }) { Text("Next slot") }
+                        TextButton(onClick = {
+                            JNIdc.restartGame()
+                            visible = false
+                            menuOwnsKeys = false
+                            compose?.visibility = View.GONE
+                            glView?.requestFocus()
+                        }) { Text("Restart") }
+                        TextButton(onClick = { discPicker.launch(arrayOf("*/*")) }) { Text("Swap disc") }
+                        ToggleRow(Icons.Default.Tv, "Widescreen", null, wide) {
+                            JNIdc.configSetBool("config", "rend.WideScreen", it)
+                            tick++
+                        }
+                        ToggleRow(Icons.Default.Tv, "VSync", null, vsync) {
+                            JNIdc.configSetBool("config", "rend.vsync", it)
+                            tick++
+                        }
+                        ToggleRow(Icons.Default.Info, "Per-game overrides", "Stores later changes in this game's Flycast section.", perGame) {
+                            JNIdc.setPerGameConfig(it)
+                            tick++
+                        }
+                        TextButton(onClick = { hideForNative(SETTINGS) }) { Text("Emulator settings") }
+                        TextButton(onClick = { hideForNative(CHEATS) }) { Text("Cheats") }
+                        TextButton(onClick = { activity.finish() }) { Text("Exit game") }
+                        message?.let { Text(it, color = Color(0xFFFFB15A)) }
+                        Spacer(Modifier.height(12.dp))
+                    }
+                }
+            }
         }
     }
 }

@@ -25,12 +25,23 @@ namespace achievements
 
 struct Game
 {
-	std::string image;
+	std::string image; // Existing local cache path used by Flycast's native UI.
 	std::string title;
 	u32 unlockedAchievements;
 	u32 totalAchievements;
 	u32 points;
 	u32 totalPoints;
+	std::string imageUrl;
+	bool hardcore = false;
+};
+
+struct User
+{
+	std::string username;
+	std::string token;
+	std::string avatarUrl;
+	u32 score = 0;
+	u32 softcoreScore = 0;
 };
 
 struct Achievement
@@ -38,17 +49,29 @@ struct Achievement
 	Achievement() = default;
 	Achievement(const std::string& image, const std::string& title, const std::string& description, const std::string& category, const std::string& status)
 		: image(image), title(title), description(description), category(category), status(status) {}
-	std::string image;
+	std::string image; // Existing local cache path used by Flycast's native UI.
 	std::string title;
 	std::string description;
 	std::string category;
 	std::string status;
+	u32 id = 0;
+	u32 points = 0;
+	bool unlocked = false;
+	std::string imageUrl;
+	std::string lockedImageUrl;
+	std::string progress;
 };
 
 bool init();
 void term();
 std::future<void> login(const char *username, const char *password);
+void loginWithToken(const char *username, const char *token);
 void logout();
+void setHardcore(bool enabled);
+bool isHardcore();
+bool isLoginPending();
+std::string lastLoginError();
+User getCurrentUser();
 bool isLoggedOn();
 bool isActive();
 Game getCurrentGame();

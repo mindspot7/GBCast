@@ -10,5 +10,5 @@ Build request: Dreamcast controller launcher icon 2026-10-25
 Build request: GBCast startup failure diagnostics 2026-10-25
 Build request: JNI HTTP bridge initialization order fix 2026-10-25
 Build request: GBCast library physical X menu state routing fix 2026-10-25
-Build request: GBCast use shared GBFrame menu state like GBSat 2026-10-25
+Build request: GBCast align GBFrame control dispatch and hotkey lifecycle with GBSat 2026-10-25
 

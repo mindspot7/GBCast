@@ -154,7 +154,7 @@ object GbcastGameUi {
 
         val savePage = androidx.compose.runtime.remember {
             gb.frame.QuickMenuPage("save-state", "Save state") {
-                for (index in 0..9) {
+                for (index in 0 until gb.frame.SaveData.MANUAL_SAVE_STATE_SLOTS) {
                     val exists = hasState(index)
                     gb.frame.QuickMenuItemRow(
                         id = "save-slot-" + index,
@@ -173,7 +173,7 @@ object GbcastGameUi {
         val loadPage = androidx.compose.runtime.remember {
             gb.frame.QuickMenuPage("load-state", "Load state") {
 
-                for (index in 0..9) {
+                for (index in 0 until gb.frame.SaveData.MANUAL_SAVE_STATE_SLOTS) {
                     val exists = hasState(index)
                     gb.frame.QuickMenuItemRow(
                         id = "load-slot-" + index,
@@ -482,3 +482,4 @@ object GbcastInput {
         return false
     }
 }
+

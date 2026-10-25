@@ -207,29 +207,4 @@ private val DreamcastPad = PadLayout(listOf(
     PadButton("Y", "Y", x = .75f, y = .33f, w = .18f, h = .18f, color = Color(0xFFCEB45E)),
     PadButton("A", "A", x = .64f, y = .62f, w = .18f, h = .18f, color = Color(0xFF3C8D83)),
     PadButton("B", "B", x = .74f, y = .58f, w = .18f, h = .18f, color = Color(0xFFBD625A)),
-
-), body = {
-    // Dreamcast's single central grip and VMU bay, rather than the generic dual-grip pad.
-    val cw = size.width
-    val ch = size.height
-    val body = androidx.compose.ui.graphics.Path().apply {
-        moveTo(cw * .16f, ch * .19f)
-        cubicTo(cw * .25f, ch * .09f, cw * .75f, ch * .09f, cw * .84f, ch * .19f)
-        lineTo(cw * .96f, ch * .43f)
-        cubicTo(cw * .99f, ch * .53f, cw * .92f, ch * .63f, cw * .83f, ch * .62f)
-        lineTo(cw * .66f, ch * .57f)
-        cubicTo(cw * .61f, ch * .56f, cw * .60f, ch * .67f, cw * .57f, ch * .82f)
-        cubicTo(cw * .55f, ch * .93f, cw * .45f, ch * .93f, cw * .43f, ch * .82f)
-        cubicTo(cw * .40f, ch * .67f, cw * .39f, ch * .56f, cw * .34f, ch * .57f)
-        lineTo(cw * .17f, ch * .62f)
-        cubicTo(cw * .08f, ch * .63f, cw * .01f, ch * .53f, cw * .04f, ch * .43f)
-        close()
-    }
-    drawPath(body, Color(0xFF343B50))
-    drawPath(body, Color.White.copy(alpha = .28f), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3f))
-    // Raised central VMU/display bay, characteristic of the Dreamcast controller.
-    drawRoundRect(Color(0xFF1A2230), androidx.compose.ui.geometry.Offset(cw * .405f, ch * .22f),
-        androidx.compose.ui.geometry.Size(cw * .19f, ch * .24f), androidx.compose.ui.geometry.CornerRadius(10f))
-    drawRoundRect(Color(0xFF7C8999), androidx.compose.ui.geometry.Offset(cw * .435f, ch * .255f),
-        androidx.compose.ui.geometry.Size(cw * .13f, ch * .13f), androidx.compose.ui.geometry.CornerRadius(4f))
-})
+))

@@ -202,7 +202,7 @@ fun LibraryScreen(
     }
     val actions = HomeActions(
         play = { launch(it.key, -1) },
-        fresh = { launch(it.key, -1) },
+        fresh = { launch(it.key, -1, true) },
         options = { gameMenu = it },
         resume = { entry ->
             val slot = entry.key.substringAfterLast('#').toIntOrNull() ?: 0
@@ -305,7 +305,7 @@ fun LibraryScreen(
                 },
                 onOpen = {
                     gameMenu = null
-                    actions.play(game)
+                    actions.fresh(game)
                 },
                 onCover = { picker(game.title) },
             )

@@ -2,6 +2,7 @@
 
 #include "cfg/option.h"
 #include "emulator.h"
+#include "cheats.h"
 #include "imgread/common.h"
 #include "stdclass.h"
 #include "ui/gui.h"
@@ -301,5 +302,53 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_insertD
 		return env->NewStringUTF(e.what());
 	} catch (const std::exception &e) {
 		return env->NewStringUTF(e.what());
+	}
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_com_flycast_emulator_emu_JNIdc_cheatCount(JNIEnv *, jclass) {
+	return (jint)cheatManager.cheatCount();
+}
+
+extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_cheatDescription(JNIEnv *env, jclass, jint index) {
+	if (index < 0 || (size_t)index >= cheatManager.cheatCount())
+		return nullptr;
+	return env->NewStringUTF(cheatManager.cheatDescription((size_t)index).c_str());
+}
+
+extern "C" JNIEXPORT jboolean JNICALL Java_com_flycast_emulator_emu_JNIdc_cheatEnabled(JNIEnv *, jclass, jint index) {
+	if (index < 0 || (size_t)index >= cheatManager.cheatCount())
+		return JNI_FALSE;
+	return cheatManager.cheatEnabled((size_t)index) ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL Java_com_flycast_emulator_emu_JNIdc_cheatBuiltIn(JNIEnv *, jclass, jint index) {
+	if (index < 0 || (size_t)index >= cheatManager.cheatCount())
+		return JNI_FALSE;
+	return cheatManager.cheatBuiltIn((size_t)index) ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL Java_com_flycast_emulator_emu_JNIdc_setCheatEnabled(JNIEnv *, jclass, jint index, jboolean enabled) {
+	if (index < 0 || (size_t)index >= cheatManager.cheatCount() || settings.raHardcoreMode)
+		return JNI_FALSE;
+	cheatManager.enableCheat((size_t)index, enabled == JNI_TRUE);
+	cheatManager.apply();
+	return JNI_TRUE;
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_removeCheat(JNIEnv *, jclass, jint index) {
+	if (index >= 0 && (size_t)index < cheatManager.cheatCount() && !cheatManager.cheatBuiltIn((size_t)index))
+		cheatManager.removeCheat((size_t)index);
+}
+
+extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_addGameSharkCheat(JNIEnv *env, jclass, jstring name, jstring code) {
+	if (settings.raHardcoreMode)
+		return env->NewStringUTF("Cheats are disabled while RetroAchievements hardcore mode is active.");
+	try {
+		cheatManager.addGameSharkCheat(jstr(env, name), jstr(env, code));
+		return nullptr;
+	} catch (const std::exception &e) {
+		return env->NewStringUTF(e.what());
+	} catch (...) {
+		return env->NewStringUTF("Flycast could not parse that GameShark code.");
 	}
 }

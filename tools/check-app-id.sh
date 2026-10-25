@@ -13,7 +13,7 @@ ns=$(sed -n 's/^[[:space:]]*namespace = "\([^"]*\)".*/\1/p' "$gradle")
 ps_app=$(awk -F"'" '/^\$App[[:space:]]*=/ {print $2}' "$device_tools")
 ps_activity=$(awk -F"'" '/^\$Activity[[:space:]]*=/ {print $2}' "$device_tools")
 manifest_activity=$(awk '
-  /<activity-alias([[:space:]>])/ { inside=1; name=""; main=0; launcher=0 }
+  /^[[:space:]]*<activity-alias/ { inside=1; name=""; main=0; launcher=0 }
   inside && match($0, /android:name="[^"]+"/) {
     name=substr($0, RSTART+14, RLENGTH-15)
   }

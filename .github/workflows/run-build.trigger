@@ -17,3 +17,4 @@ Build request: use the installed app launcher icon in GBCast top bar, main menu,
 Build request: enforce GBFrame five manual save-state slots in GBCast 2026-10-25
 Build request: fix launch callback arity and apply GBFrame majority box-art aspect ratios 2026-10-25
 Build request: Hide Dreamcast touch controls when physical controller is connected 2026-10-25
+Build request: Apply Dreamcast Graphite theme C 2026-10-25

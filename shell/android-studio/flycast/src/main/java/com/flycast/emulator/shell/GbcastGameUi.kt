@@ -200,9 +200,6 @@ object GbcastGameUi {
             } else {
                 JNIdc.insertDisk(copied) ?: "Disc inserted. Resume to continue."
             }
-            if (copied != null && JNIdc.insertDisk(copied) == null) {
-                // insertDisk was already called above; this branch is intentionally left empty.
-            }
         }
 
         val savePage = androidx.compose.runtime.remember {

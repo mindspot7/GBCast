@@ -72,6 +72,7 @@ import gb.frame.HomeMenuItem
 import gb.frame.HomeMenuPanel
 import gb.frame.HomeTheme
 import gb.frame.HomeTopBar
+import gb.frame.MenuState
 import gb.frame.MenuIcon
 import gb.frame.PlayTime
 import gb.frame.ResumeEntry
@@ -183,11 +184,13 @@ fun LibraryScreen(
     }
 
     BackHandler {
-        when {
-            confirmQuit -> confirmQuit = false
-            gameMenu != null -> gameMenu = null
-            menuOpen -> menuOpen = false
-            else -> confirmQuit = true
+        LibraryBack.handle {
+            if (gameMenu != null) {
+                gameMenu = null
+                true
+            } else {
+                false
+            }
         }
     }
 

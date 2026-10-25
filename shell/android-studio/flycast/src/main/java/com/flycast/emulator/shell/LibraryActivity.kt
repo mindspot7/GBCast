@@ -11,6 +11,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import com.flycast.emulator.shell.ui.GBCastRoot
 import com.flycast.emulator.shell.ui.DreamcastControls
 import gb.frame.ControlsCapture
+import gb.frame.HomeKeys
 import com.flycast.emulator.shell.ui.MenuState
 import gb.frame.HomeTheme
 import gb.frame.PlayTime
@@ -65,6 +66,7 @@ class LibraryActivity : ComponentActivity() {
             lastGamepadBAt = event.eventTime
             lastGamepadBDevice = event.deviceId
         }
+        if (HomeKeys.dispatch(event, enabled = MenuState.libraryShown && !ControlsCapture.active(DreamcastControls))) return true
         if (event.keyCode == KeyEvent.KEYCODE_BACK) {
             val fromController = event.source and (InputDevice.SOURCE_GAMEPAD or InputDevice.SOURCE_DPAD) != 0
             if (fromController && event.action == KeyEvent.ACTION_DOWN &&
@@ -84,33 +86,6 @@ class LibraryActivity : ComponentActivity() {
             return backKey(event)
         }
         if (event.keyCode == KeyEvent.KEYCODE_BUTTON_B) return backKey(event)
-        if (MenuState.libraryShown && !MenuState.quitOpen.value) {
-            if (event.keyCode == KeyEvent.KEYCODE_BUTTON_SELECT && event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
-                HomeTheme.fullscreen.value = !HomeTheme.fullscreen.value
-                if (MenuState.open.value) MenuState.menuRefocus.intValue++ else MenuState.refocus.intValue++
-                return true
-            }
-            if (event.keyCode == KeyEvent.KEYCODE_BUTTON_X && event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
-                HomeTheme.cycleStyle()
-                return true
-            }
-            val focusLost = if (MenuState.open.value) !MenuState.menuHasFocus else !MenuState.hasFocus
-            if (focusLost && event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0 &&
-                (event.keyCode in dpad || event.keyCode == KeyEvent.KEYCODE_BUTTON_A || event.keyCode == KeyEvent.KEYCODE_BUTTON_Y)
-            ) {
-                if (MenuState.open.value) MenuState.menuRefocus.intValue++ else MenuState.refocus.intValue++
-                return true
-            }
-        }
-        if (MenuState.quitOpen.value &&
-            (event.keyCode == KeyEvent.KEYCODE_BUTTON_A || event.keyCode == KeyEvent.KEYCODE_DPAD_CENTER || event.keyCode == KeyEvent.KEYCODE_ENTER)
-        ) {
-            if (event.action == KeyEvent.ACTION_UP) {
-                MenuState.quitOpen.value = false
-                MenuState.onQuit?.invoke()
-            }
-            return true
-        }
         val mapped = when (event.keyCode) {
             KeyEvent.KEYCODE_BUTTON_A -> KeyEvent.KEYCODE_DPAD_CENTER
             else -> null

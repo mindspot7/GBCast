@@ -46,4 +46,12 @@ public final class JNIdc
 	public static native void setFastForwardMode(boolean enabled);
 	public static native boolean loadCurrentSlot();
 	public static native String insertDisk(String path);
+	public static native int cheatCount();
+	public static native String cheatDescription(int index);
+	public static native boolean cheatEnabled(int index);
+	public static native boolean cheatBuiltIn(int index);
+	public static native boolean setCheatEnabled(int index, boolean enabled);
+	public static native void removeCheat(int index);
+	/** Returns null on success or an error message when Flycast rejects the code. */
+	public static native String addGameSharkCheat(String name, String code);
 }

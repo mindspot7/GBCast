@@ -170,7 +170,7 @@ object GbcastGameUi {
         }
         val loadPage = androidx.compose.runtime.remember {
             gb.frame.QuickMenuPage("load-state", "Load state") {
-                val revision = tick
+
                 for (index in 0..9) {
                     val exists = hasState(index)
                     gb.frame.QuickMenuItemRow(
@@ -181,7 +181,7 @@ object GbcastGameUi {
                         enabled = exists,
                     ) {
                         JNIdc.configSetInt("config", "Dreamcast.SavestateSlot", index)
-                        slot = index
+
                         if (JNIdc.loadCurrentSlot()) {
                             toast("Loaded slot " + (index + 1))
                             dismiss()
@@ -195,7 +195,7 @@ object GbcastGameUi {
 
         val videoPage = androidx.compose.runtime.remember {
             gb.frame.QuickMenuPage("video", "Video") {
-                val revision = tick
+
                 val rendererValues = listOf(0 to "GLES", 3 to "GLES OIT", 4 to "Vulkan", 5 to "Vulkan OIT")
                 val renderer = currentInt("config", "pvr.rend")
                 val rendererIndex = rendererValues.indexOfFirst { it.first == renderer }.let { if (it < 0) 0 else it }
@@ -264,7 +264,7 @@ object GbcastGameUi {
 
         val audioPage = androidx.compose.runtime.remember {
             gb.frame.QuickMenuPage("audio", "Audio") {
-                val revision = tick
+
                 for ((key, label) in listOf(
                     "aica.DSPEnabled" to "DSP",
                     "aica.AutoLatency" to "Automatic latency",
@@ -294,7 +294,7 @@ object GbcastGameUi {
 
         val performancePage = androidx.compose.runtime.remember {
             gb.frame.QuickMenuPage("performance", "Performance") {
-                val revision = tick
+
                 for ((key, label) in listOf(
                     "Dynarec.Enabled" to "Dynarec",
                     "rend.ThreadedRendering" to "Threaded rendering",
@@ -318,7 +318,7 @@ object GbcastGameUi {
 
         val overlaysPage = androidx.compose.runtime.remember {
             gb.frame.QuickMenuPage("overlays", "Overlays") {
-                val revision = tick
+
                 gb.frame.QuickMenuItemRow(
                     id = "show-fps", icon = androidx.compose.material.icons.Icons.Default.Speed,
                     label = "Show FPS", value = if (currentBool("config", "rend.ShowFPS")) "On" else "Off",
@@ -387,7 +387,7 @@ object GbcastGameUi {
 
         val rootPage = androidx.compose.runtime.remember {
             gb.frame.QuickMenuPage("gbcast-root", "Paused") {
-                val revision = tick
+
                 gb.frame.QuickMenuItemRow(
                     id = "resume", icon = androidx.compose.material.icons.Icons.Default.PlayArrow,
                     label = "Resume",

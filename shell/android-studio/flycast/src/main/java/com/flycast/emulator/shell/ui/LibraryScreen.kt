@@ -58,7 +58,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.LifecycleResumeEffect
-import com.flycast.emulator.R
+import app.gbcast.emulator.R
 import com.flycast.emulator.shell.FlycastBridge
 import com.flycast.emulator.shell.GameIndex
 import com.flycast.emulator.shell.Storage

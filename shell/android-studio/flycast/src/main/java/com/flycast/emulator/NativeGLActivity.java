@@ -43,9 +43,20 @@ public final class NativeGLActivity extends BaseGLActivity {
 
         setContentView(mLayout);
         com.flycast.emulator.shell.GbcastGameUi.attach(this, mLayout, mView);
-        DreamcastControls.configureHotkeys(this);
+        DreamcastControls.INSTANCE.initialize(this);
+        DreamcastControls.configureHotkeys();
         wantLoad = getIntent().getBooleanExtra("gbcast_load_state", false);
         Log.i("flycast", "NativeGLActivity.onCreate done");
+    }
+
+    @Override
+    protected void onDestroy() {
+        try {
+            super.onDestroy();
+        } finally {
+            // The shared detector tracks held/suppressed buttons process-wide; clear it when the game session ends.
+            Hotkeys.INSTANCE.reset();
+        }
     }
 
     @Override
@@ -366,3 +377,4 @@ class DummyEdit extends View implements View.OnKeyListener {
         return ic;
     }
 }
+

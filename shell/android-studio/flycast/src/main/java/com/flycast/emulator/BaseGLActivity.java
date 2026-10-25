@@ -365,11 +365,17 @@ public abstract class BaseGLActivity extends ComponentActivity implements Activi
     }
 
     private void onBackKey() {
+        // While the shared GBFrame quick menu is open, dispatch Back through Compose so its nested-page stack
+        // is honored. Only the root page dismisses the panel and resumes the game.
+        if (com.flycast.emulator.shell.GbcastGameUi.getMenuOwnsKeys()) {
+            getOnBackPressedDispatcher().onBackPressed();
+            return;
+        }
         if (JNIdc.guiIsContentBrowser()) {
             finish();
             return;
         }
-        // The Compose quick menu pauses via gui_togglePause. Native Flycast pages still get this callback.
+        // Native Flycast pages still use the original emulator Back behavior.
         com.flycast.emulator.shell.GbcastGameUi.onAndroidBack(this);
     }
 

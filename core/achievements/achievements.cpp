@@ -57,8 +57,11 @@ public:
 	void logout();
 	void setHardcore(bool enabled);
 	bool isHardcore() const { return settings.raHardcoreMode; }
-	bool isLoginPending() const { return loginPending; }
-	std::string lastLoginError() const { return raLoginError; }
+	bool isLoginPending() const { return loginPending.load(); }
+	std::string lastLoginError() const {
+		std::lock_guard<std::mutex> lock(loginErrorMutex);
+		return raLoginError;
+	}
 	User getCurrentUser() const;
 	bool isLoggedOn() const { return loggedOn; }
 	bool isActive() const { return active; }
@@ -85,6 +88,10 @@ private:
 	void diskChange();
 	void asyncTask(std::function<void()>&& f);
 	void stopThreads();
+	void setLoginError(const std::string& error) {
+		std::lock_guard<std::mutex> lock(loginErrorMutex);
+		raLoginError = error;
+	}
 
 	static void clientLoginWithTokenCallback(int result, const char *error_message, rc_client_t *client, void *userdata);
 	static void clientLoginWithPasswordCallback(int result, const char *error_message, rc_client_t *client, void *userdata);
@@ -112,7 +119,8 @@ private:
 
 	rc_client_t *rc_client = nullptr;
 	bool loggedOn = false;
-	bool loginPending = false;
+	std::atomic_bool loginPending { false };
+	mutable std::mutex loginErrorMutex;
 	std::string raLoginError;
 	bool hostOverrideActive = false;
 	std::atomic_bool loadingGame {};
@@ -424,7 +432,7 @@ void Achievements::authenticationSuccess(const rc_client_user_t *user)
 	}
 	loggedOn = true;
 	loginPending = false;
-	raLoginError.clear();
+	setLoginError("");
 	if (!settings.content.fileName.empty()) // TODO better test?
 		loadGame();
 }
@@ -436,7 +444,7 @@ void Achievements::clientLoginWithTokenCallback(int result, const char *error_me
 	if (result != RC_OK)
 	{
 		achievements->loginPending = false;
-		achievements->raLoginError = error_message ? error_message : "RetroAchievements authentication failed";
+		achievements->setLoginError(error_message ? error_message : "RetroAchievements authentication failed");
 		WARN_LOG(COMMON, "RA Login failed: %s", error_message);
 		notifier.notify(Notification::Login, "", i18n::Ts("RetroAchievements authentication failed"), error_message);
 		return;
@@ -468,7 +476,7 @@ void Achievements::clientLoginWithPasswordCallback(int result, const char *error
 		if (error_message != nullptr)
 			errorMsg += ": " + std::string(error_message);
 		achievements->loginPending = false;
-		achievements->raLoginError = errorMsg;
+		achievements->setLoginError(errorMsg);
 		promise->set_exception(std::make_exception_ptr(FlycastException(errorMsg)));
 		delete promise;
 		WARN_LOG(COMMON, "RA Login failed: %s", errorMsg.c_str());
@@ -479,7 +487,7 @@ void Achievements::clientLoginWithPasswordCallback(int result, const char *error
 	if (!user || !user->token)
 	{
 		achievements->loginPending = false;
-		achievements->raLoginError = i18n::Ts("No user token returned");
+		achievements->setLoginError(i18n::Ts("No user token returned"));
 		WARN_LOG(COMMON, "RA: rc_client_get_user_info() returned NULL");
 		promise->set_exception(std::make_exception_ptr(FlycastException(i18n::Ts("No user token returned"))));
 		delete promise;

@@ -1,9 +1,10 @@
 name: Android
 # Builds the GBCast release APK from the Flycast core and the GBFrame submodule.
+# Intentionally manual: run only after all related code changes have been reviewed,
+# and only after the matching GBFrame build has completed successfully.
 
 on:
-  push:
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   build:

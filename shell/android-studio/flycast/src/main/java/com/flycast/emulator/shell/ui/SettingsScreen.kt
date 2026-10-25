@@ -336,10 +336,7 @@ private fun ExtrasPage(tick: Int, cfg: Cfg) {
         SettingsDivider()
         ToggleRow(Icons.Default.Wifi, "GGPO", "Rollback netplay. The host, delay and chat options stay in Flycast's network screen.", cfg.bool("network", "GGPO")) { cfg.toggle("network", "GGPO") }
         SettingsDivider()
-        ToggleRow(Icons.Default.Info, "RetroAchievements", "achievements.Enabled. Sign-in stays in the in-game Flycast menu.", cfg.bool("achievements", "Enabled")) { cfg.toggle("achievements", "Enabled") }
-        SettingsDivider()
-        ToggleRow(Icons.Default.Info, "Hardcore mode", "Disables save states while active.", cfg.bool("achievements", "HardcoreMode")) { cfg.toggle("achievements", "HardcoreMode") }
-        SettingsDivider()
         ToggleRow(Icons.Default.Info, "Upload crash logs", null, cfg.bool("config", "UploadCrashLogs")) { cfg.toggle("config", "UploadCrashLogs") }
     }
+    gb.frame.RetroAchievementsSettings("GBCast")
 }

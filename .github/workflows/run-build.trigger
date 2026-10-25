@@ -12,3 +12,5 @@ Build request: JNI HTTP bridge initialization order fix 2026-10-25
 Build request: GBCast library physical X menu state routing fix 2026-10-25
 Build request: GBCast align GBFrame control dispatch and hotkey lifecycle with GBSat 2026-10-25
 
+
+Build request: Fix missing GBFrame LibraryBack import and rerun final parity build 2026-10-25

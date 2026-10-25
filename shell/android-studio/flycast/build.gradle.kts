@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.compose)
 }
 
 fun gitVersionName(): String {
@@ -19,7 +20,9 @@ android {
 
     defaultConfig {
         applicationId = "com.flycast.emulator"
-        minSdk = 21
+        // GBFrame declares minSdk 28. An app cannot be lower than its library, so GBCast matches it.
+        // applicationId stays com.flycast.emulator so updates keep the existing data directory.
+        minSdk = 28
         targetSdk = 36
         versionCode = 8
         versionName = gitVersionName()
@@ -60,9 +63,10 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
+    buildFeatures { compose = true }
     externalNativeBuild {
         cmake {
             path = file("../../../CMakeLists.txt")
@@ -84,6 +88,15 @@ android {
 
 dependencies {
     implementation(libs.appcompat)
+    val composeBom = platform(libs.compose.bom)
+    implementation(composeBom)
+    implementation(libs.activity.compose)
+    implementation(libs.core.ktx)
+    implementation(libs.lifecycle.runtime.compose)
+    implementation(libs.compose.ui)
+    implementation(libs.compose.material3)
+    implementation(libs.compose.icons)
+    implementation(project(":gbframe"))
     implementation(libs.commons.lang3)
     implementation(libs.httpclient5)
     implementation(libs.slf4j.android)

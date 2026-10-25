@@ -39,7 +39,27 @@ public final class NativeGLActivity extends BaseGLActivity {
         mLayout.addView(mView);
 
         setContentView(mLayout);
+        com.flycast.emulator.shell.GbcastGameUi.attach(this, mLayout, mView);
+        wantLoad = getIntent().getBooleanExtra("gbcast_load_state", false);
         Log.i("flycast", "NativeGLActivity.onCreate done");
+    }
+
+    private boolean wantLoad;
+    private int loadAttempts;
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus)
+            hideSystemBars();
+    }
+
+    private void hideSystemBars() {
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        androidx.core.view.WindowInsetsControllerCompat controller =
+                new androidx.core.view.WindowInsetsControllerCompat(getWindow(), getWindow().getDecorView());
+        controller.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars());
+        controller.setSystemBarsBehavior(androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
     }
 
     @Override
@@ -64,10 +84,27 @@ public final class NativeGLActivity extends BaseGLActivity {
         super.onGameStateChange(started);
         runOnUiThread(new Runnable() {
             public void run() {
-                if (started)
+                if (started) {
                     mView.showVGamepad();
+                    if (wantLoad)
+                        handler.post(NativeGLActivity.this::tryLoadState);
+                }
             }
         });
+    }
+
+    private void tryLoadState() {
+        if (!wantLoad)
+            return;
+        if (com.flycast.emulator.emu.JNIdc.loadCurrentSlot()) {
+            wantLoad = false;
+            return;
+        }
+        if (++loadAttempts > 40) {
+            wantLoad = false;
+            return;
+        }
+        handler.postDelayed(this::tryLoadState, 300);
     }
 
     // Called from native code

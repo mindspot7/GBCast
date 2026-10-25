@@ -1,3 +1,19 @@
+# GBCast
+
+Android shell for the Flycast core (Dreamcast, Naomi, Naomi 2 and Atomiswave) using the shared [GBFrame](https://github.com/mindspot7/GBFrame) library. The launcher is the GBCast game library. `NativeGLActivity` still renders with Flycast's existing GLES/Vulkan path.
+
+GBFrame is the git submodule `libs/gbframe` (commit `1f869337e6dbf67e039ee2752aa99ca459bc23b0` on `main`). The application id stays `com.flycast.emulator`. `minSdk` is **28** because that is GBFrame's minimum; the previous Flycast Android app allowed API 21.
+
+## Android library
+
+- Showcase, Grid and All in One come from GBFrame. Theme in the main menu switches them. The last selected game is restored by `LibraryView`.
+- The games folder is a persisted Storage Access Framework tree. Indexed extensions: gdi, cdi, chd, cue, lst, zip, 7z, dat, bin. BIN/RAW/ISO tracks next to a GDI or CUE are not listed as separate games. GDI and CUE are staged with their sibling tracks; CDI, CHD and archives are copied to a real cache file because Flycast opens them by path.
+- Covers use libretro-thumbnails `Sega - Dreamcast`.
+- Settings in the library write Flycast `config::Option` values and call `SaveSettings`. Per-game overrides, cheats, RetroAchievements sign-in and the full button map stay in Flycast's own UI, opened from the in-game quick menu.
+- Android Back during a game calls `gui_togglePause` and opens the quick menu. The system bars stay hidden (`BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE`). A controller B press that is also reported as Back is not treated as the menu while gameplay is in front.
+
+Build the APK from `shell/android-studio` (`assembleRelease` or `assembleDebug`). The existing Android, desktop, Switch and UWP workflows are unchanged apart from the Android build now compiling this UI. `git` must be on `PATH` because the version name is `git describe`.
+
 # Flycast
 
 [![Android CI](https://github.com/flyinghead/flycast/actions/workflows/android.yml/badge.svg)](https://github.com/flyinghead/flycast/actions/workflows/android.yml)

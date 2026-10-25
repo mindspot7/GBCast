@@ -37,10 +37,10 @@
 
     <application
         android:name="com.flycast.emulator.Emulator"
-        android:icon="@drawable/ic_launcher"
+        android:icon="@drawable/ic_gbcast"
         android:label="@string/app_name"
         android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
-        android:roundIcon="@drawable/ic_launcher"
+        android:roundIcon="@drawable/ic_gbcast"
         android:banner="@drawable/ic_banner"
         android:logo="@drawable/ic_banner"
         android:hardwareAccelerated="true"
@@ -54,118 +54,46 @@
 
         <meta-data android:name="android.max_aspect" android:value="2.1" />
         <activity
+            android:name="com.flycast.emulator.shell.LibraryActivity"
+            android:configChanges="orientation|navigation|screenSize|screenLayout|uiMode|keyboard|keyboardHidden"
+            android:exported="true"
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen" />
+        <activity
             android:name="com.flycast.emulator.NativeGLActivity"
             android:configChanges="orientation|navigation|screenSize|screenLayout|uiMode|keyboard|keyboardHidden"
             android:screenOrientation="sensorLandscape"
             android:exported="true"
-            android:theme="@style/Theme.AppCompat.NoActionBar"/>
+            android:theme="@style/Theme.AppCompat.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:mimeType="*/*" />
+                <data android:pathPattern=".*\\.gdi" />
+                <data android:pathPattern=".*\\.GDI" />
+                <data android:pathPattern=".*\\.chd" />
+                <data android:pathPattern=".*\\.CHD" />
+                <data android:pathPattern=".*\\.cdi" />
+                <data android:pathPattern=".*\\.CDI" />
+                <data android:pathPattern=".*\\.cue" />
+                <data android:pathPattern=".*\\.CUE" />
+                <data android:pathPattern=".*\\.zip" />
+                <data android:pathPattern=".*\\.ZIP" />
+                <data android:pathPattern=".*\\.7z" />
+                <data android:pathPattern=".*\\.7Z" />
+            </intent-filter>
+        </activity>
         <activity-alias
             android:name="com.flycast.emulator.MainActivity"
-            android:targetActivity="com.flycast.emulator.NativeGLActivity"
+            android:targetActivity="com.flycast.emulator.shell.LibraryActivity"
 			android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
-			<intent-filter>
-				<action android:name="android.intent.action.VIEW" />
-
-				<category android:name="android.intent.category.DEFAULT" />
-				<category android:name="android.intent.category.BROWSABLE" />
-
-				<data
-					android:host="*"
-					android:mimeType="*/*"
-					android:pathPattern=".*\\.GDI"
-					android:scheme="file" />
-				<data
-					android:host="*"
-					android:mimeType="*/*"
-					android:pathPattern=".*\\.gdi"
-					android:scheme="file" />
-				<data
-					android:host="*"
-					android:mimeType="*/*"
-					android:pathPattern=".*\\.CHD"
-					android:scheme="file" />
-				<data
-					android:host="*"
-					android:mimeType="*/*"
-					android:pathPattern=".*\\.chd"
-					android:scheme="file" />
-				<data
-					android:host="*"
-					android:mimeType="*/*"
-					android:pathPattern=".*\\.CDI"
-					android:scheme="file" />
-				<data
-					android:host="*"
-					android:mimeType="*/*"
-					android:pathPattern=".*\\.cdi"
-					android:scheme="file" />
-				<data
-					android:host="*"
-					android:mimeType="*/*"
-					android:pathPattern=".*\\.CUE"
-					android:scheme="file" />
-				<data
-					android:host="*"
-					android:mimeType="*/*"
-					android:pathPattern=".*\\.cue"
-					android:scheme="file" />
-
-				<data
-					android:host="*"
-					android:mimeType="*/*"
-					android:pathPattern=".*\\.LST"
-					android:scheme="file" />
-				<data
-					android:host="*"
-					android:mimeType="*/*"
-					android:pathPattern=".*\\.lst"
-					android:scheme="file" />
-				<data
-					android:host="*"
-					android:mimeType="*/*"
-					android:pathPattern=".*\\.BIN"
-					android:scheme="file" />
-				<data
-					android:host="*"
-					android:mimeType="*/*"
-					android:pathPattern=".*\\.bin"
-					android:scheme="file" />
-				<data
-					android:host="*"
-					android:mimeType="*/*"
-					android:pathPattern=".*\\.DAT"
-					android:scheme="file" />
-				<data
-					android:host="*"
-					android:mimeType="*/*"
-					android:pathPattern=".*\\.dat"
-					android:scheme="file" />
-				<data
-					android:host="*"
-					android:mimeType="*/*"
-					android:pathPattern=".*\\.ZIP"
-					android:scheme="file" />
-				<data
-					android:host="*"
-					android:mimeType="*/*"
-					android:pathPattern=".*\\.zip"
-					android:scheme="file" />
-				<data
-					android:host="*"
-					android:mimeType="*/*"
-					android:pathPattern=".*\\.7Z"
-					android:scheme="file" />
-				<data
-					android:host="*"
-					android:mimeType="*/*"
-					android:pathPattern=".*\\.7z"
-					android:scheme="file" />
-			</intent-filter>
         </activity-alias>
         <receiver
             android:name="com.flycast.emulator.RetroAchievementsHostOverrideReceiver"

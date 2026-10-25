@@ -27,4 +27,22 @@ public final class JNIdc
 	public static native boolean guiIsContentBrowser();
 	public static native void guiSetInsets(int left, int right, int top, int bottom);
 	public static native void postRestore(String filesDir);
+
+	// GBCast bridge. Keys are Flycast config section + option name (see core/cfg/option.cpp).
+	public static native boolean configGetBool(String section, String name);
+	public static native boolean configSetBool(String section, String name, boolean value);
+	public static native int configGetInt(String section, String name);
+	public static native boolean configSetInt(String section, String name, int value);
+	public static native void configSave();
+	public static native boolean hasPerGameConfig();
+	public static native void setPerGameConfig(boolean enabled);
+	public static native String dataDirectory();
+	public static native String currentGamePath();
+	public static native int guiState();
+	public static native void guiSetState(int state);
+	public static native void guiTogglePause();
+	public static native void restartGame();
+	public static native void saveCurrentSlot();
+	public static native boolean loadCurrentSlot();
+	public static native String insertDisk(String path);
 }

@@ -4,8 +4,15 @@ import android.app.Application;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.wifi.WifiManager;
+import android.os.Environment;
 import android.preference.PreferenceManager;
 import android.util.Log;
+
+import com.flycast.emulator.emu.JNIdc;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Locale;
 
 import androidx.appcompat.app.AppCompatDelegate;
 
@@ -20,6 +27,39 @@ public class Emulator extends Application {
     private WifiManager.MulticastLock multicastLock = null;
 
     public static int vibrationPower = 80;
+    private boolean coreReady;
+
+    /**
+     * Loads the Flycast core and emu.cfg once, so the library can read settings before a game starts.
+     * NativeGLActivity calls initEnvironment again; the native side ignores the second initialization.
+     * @return an error string, or null when the core is ready
+     */
+    public synchronized String ensureCore() {
+        if (coreReady)
+            return null;
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        String home = prefs.getString(Config.pref_home, "");
+        if (home == null || home.isEmpty()) {
+            File dir = getExternalFilesDir(null);
+            if (dir == null)
+                dir = getFilesDir();
+            home = dir.getAbsolutePath();
+            prefs.edit().putString(Config.pref_home, home).apply();
+        }
+        String result = JNIdc.initEnvironment(this, getFilesDir().getAbsolutePath(), home, Locale.getDefault().toString());
+        if (result != null)
+            return result;
+        getConfigurationPrefs();
+        ArrayList<String> paths = new ArrayList<>();
+        paths.add(Environment.getExternalStorageDirectory().getAbsolutePath());
+        paths.add(getFilesDir().getAbsolutePath());
+        File ext = getExternalFilesDir(null);
+        if (ext != null)
+            paths.add(ext.getAbsolutePath());
+        JNIdc.setExternalStorageDirectories(paths.toArray());
+        coreReady = true;
+        return null;
+    }
 
     /**
      * Load the settings from native code

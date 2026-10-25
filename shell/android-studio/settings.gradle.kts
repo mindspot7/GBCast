@@ -24,3 +24,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "Flycast"
 include(":flycast")
+// Shared GBFrame UI (git submodule). The library's own minSdk is 28.
+include(":gbframe")
+project(":gbframe").projectDir = file("../../libs/gbframe/gbframe")

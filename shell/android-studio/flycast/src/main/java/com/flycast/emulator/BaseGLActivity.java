@@ -157,6 +157,15 @@ public abstract class BaseGLActivity extends Activity implements ActivityCompat.
                     pendingIntentUrl = gameUri.toString();
             }
         }
+        // GBCast library hands the staged file path here. A content URI is not a path the core can open.
+        String directPath = intent.getStringExtra("gbcast_game_path");
+        if (directPath != null && !directPath.isEmpty()) {
+            intent.removeExtra("gbcast_game_path");
+            if (storagePermissionGranted)
+                JNIdc.setGameUri(directPath);
+            else
+                pendingIntentUrl = directPath;
+        }
         Log.i("flycast", "BaseGLActivity.onCreate done");
     }
 
@@ -278,6 +287,9 @@ public abstract class BaseGLActivity extends Activity implements ActivityCompat.
     }
     @Override
     public boolean onGenericMotionEvent(MotionEvent event) {
+        // While the quick menu is open, hat axes must become D-pad keys for Compose.
+        if (com.flycast.emulator.shell.GbcastGameUi.getMenuOwnsKeys())
+            return false;
         InputDeviceManager deviceManager = InputDeviceManager.getInstance();
         if ((event.getSource() & InputDevice.SOURCE_CLASS_JOYSTICK) == InputDevice.SOURCE_CLASS_JOYSTICK
                 && event.getAction() == MotionEvent.ACTION_MOVE
@@ -342,6 +354,8 @@ public abstract class BaseGLActivity extends Activity implements ActivityCompat.
 
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event) {
+        if (com.flycast.emulator.shell.GbcastGameUi.getMenuOwnsKeys())
+            return keyCode == KeyEvent.KEYCODE_BUTTON_B || keyCode == KeyEvent.KEYCODE_BACK;
         if (InputDeviceManager.getInstance().buttonEvent(event.getDeviceId(), keyCode, false))
             return true;
         if (hasKeyboard && InputDeviceManager.getInstance().keyboardEvent(keyCode, false))
@@ -352,19 +366,34 @@ public abstract class BaseGLActivity extends Activity implements ActivityCompat.
     private void onBackKey() {
         if (JNIdc.guiIsContentBrowser()) {
             finish();
+            return;
         }
-        else {
-            showMenu();
-        }
+        // The Compose quick menu pauses via gui_togglePause. Native Flycast pages still get this callback.
+        com.flycast.emulator.shell.GbcastGameUi.onAndroidBack(this);
     }
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (event.getRepeatCount() == 0) {
-            if (keyCode == KeyEvent.KEYCODE_BACK) {
-                onBackKey();
+            if (keyCode == KeyEvent.KEYCODE_BUTTON_B && event.getAction() == KeyEvent.ACTION_DOWN)
+                com.flycast.emulator.shell.GbcastInput.note(event);
+            if (com.flycast.emulator.shell.GbcastGameUi.getMenuOwnsKeys() && keyCode == KeyEvent.KEYCODE_BUTTON_B) {
+                if (event.getAction() == KeyEvent.ACTION_DOWN)
+                    onBackKey();
                 return true;
             }
+            if (keyCode == KeyEvent.KEYCODE_BACK) {
+                // A pad that emits B and Back for one press must not open the menu during gameplay.
+                if (com.flycast.emulator.shell.GbcastInput.consumePairedBack(event)
+                        && !com.flycast.emulator.shell.GbcastGameUi.getMenuOwnsKeys()
+                        && JNIdc.guiState() == 0)
+                    return true;
+                if (event.getAction() == KeyEvent.ACTION_DOWN)
+                    onBackKey();
+                return true;
+            }
+            if (com.flycast.emulator.shell.GbcastGameUi.getMenuOwnsKeys())
+                return false;
             InputDeviceManager deviceManager = InputDeviceManager.getInstance();
             if (deviceManager.buttonEvent(event.getDeviceId(), keyCode, true))
                 return true;

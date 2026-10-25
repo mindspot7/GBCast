@@ -332,13 +332,17 @@ private fun ExtrasPage(tick: Int, cfg: Cfg) {
 @Composable
 private fun AboutPage() {
     SettingsGroup("GBCast", Icons.Default.Info) {
-        InfoRow("Application", "GBCast uses the Flycast core for Dreamcast, Naomi, Naomi 2 and Atomiswave.")
+        InfoRow("Application", "Dreamcast, Naomi, Naomi 2 and Atomiswave emulation powered by Flycast.")
         SettingsDivider()
-        InfoRow("Application id", "com.flycast.emulator")
+        InfoRow("Version", app.gbcast.emulator.BuildConfig.VERSION_NAME)
         SettingsDivider()
-        InfoRow("Interface", "Library, themes and focus come from GBFrame. Layout changes only from the menu Theme tile.")
+        InfoRow("Application ID", "app.gbcast.emulator")
         SettingsDivider()
-        InfoRow("Not wired in this screen", "Flycast login, cheats and the full control map open from the quick menu's Emulator settings, which is the core's own UI.")
+        InfoRow("Shared interface", "Library layouts, theme palette, main menu and in-game quick-menu host are provided by GBFrame.")
+        SettingsDivider()
+        InfoRow("Dreamcast controls", "The shared Controls page uses a Dreamcast-specific controller diagram and Flycast button bindings.")
+        SettingsDivider()
+        InfoRow("Core-specific screens", "Flycast's native settings and cheat screens remain available from the in-game quick menu.")
     }
 }
 

@@ -330,8 +330,8 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_flycast_emulator_emu_JNIdc_cheatB
 extern "C" JNIEXPORT jboolean JNICALL Java_com_flycast_emulator_emu_JNIdc_setCheatEnabled(JNIEnv *, jclass, jint index, jboolean enabled) {
 	if (index < 0 || (size_t)index >= cheatManager.cheatCount() || settings.raHardcoreMode)
 		return JNI_FALSE;
+	// The cheat manager's VBlank callback applies changes when emulation resumes.
 	cheatManager.enableCheat((size_t)index, enabled == JNI_TRUE);
-	cheatManager.apply();
 	return JNI_TRUE;
 }
 

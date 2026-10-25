@@ -53,7 +53,13 @@ public:
 	bool init();
 	void term();
 	std::future<void> login(const char *username, const char *password);
+	void loginWithToken(const char *username, const char *token);
 	void logout();
+	void setHardcore(bool enabled);
+	bool isHardcore() const { return settings.raHardcoreMode; }
+	bool isLoginPending() const { return loginPending; }
+	std::string lastLoginError() const { return raLoginError; }
+	User getCurrentUser() const;
 	bool isLoggedOn() const { return loggedOn; }
 	bool isActive() const { return active; }
 	Game getCurrentGame();
@@ -106,6 +112,8 @@ private:
 
 	rc_client_t *rc_client = nullptr;
 	bool loggedOn = false;
+	bool loginPending = false;
+	std::string raLoginError;
 	bool hostOverrideActive = false;
 	std::atomic_bool loadingGame {};
 	bool active = false;
@@ -134,8 +142,32 @@ std::future<void> login(const char *username, const char *password) {
 	return Achievements::Instance().login(username, password);
 }
 
+void loginWithToken(const char *username, const char *token) {
+	Achievements::Instance().loginWithToken(username, token);
+}
+
 void logout() {
 	Achievements::Instance().logout();
+}
+
+void setHardcore(bool enabled) {
+	Achievements::Instance().setHardcore(enabled);
+}
+
+bool isHardcore() {
+	return Achievements::Instance().isHardcore();
+}
+
+bool isLoginPending() {
+	return Achievements::Instance().isLoginPending();
+}
+
+std::string lastLoginError() {
+	return Achievements::Instance().lastLoginError();
+}
+
+User getCurrentUser() {
+	return Achievements::Instance().getCurrentUser();
 }
 
 bool isLoggedOn() {

@@ -10,7 +10,7 @@ fun gitVersionName(): String {
 }
 
 android {
-    namespace = "com.flycast.emulator"
+    namespace = "app.gbcast.emulator"
     ndkVersion = "29.0.14206865"
     compileSdk {
         version = release(36) {
@@ -19,9 +19,9 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.flycast.emulator"
+        applicationId = "app.gbcast.emulator"
         // GBFrame declares minSdk 28. An app cannot be lower than its library, so GBCast matches it.
-        // applicationId stays com.flycast.emulator so updates keep the existing data directory.
+        // GBCast uses its own application ID and matching namespace.
         minSdk = 28
         targetSdk = 36
         versionCode = 8

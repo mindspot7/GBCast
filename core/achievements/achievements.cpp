@@ -266,6 +266,8 @@ bool Achievements::init()
 	if (!config::AchievementsUserName.get().empty() && !config::AchievementsToken.get().empty())
 	{
 		INFO_LOG(COMMON, "RA: Attempting login with user '%s'...", config::AchievementsUserName.get().c_str());
+		loginPending = true;
+		setLoginError("");
 		rc_client_begin_login_with_token(rc_client, config::AchievementsUserName.get().c_str(),
 				config::AchievementsToken.get().c_str(), clientLoginWithTokenCallback, nullptr);
 	}

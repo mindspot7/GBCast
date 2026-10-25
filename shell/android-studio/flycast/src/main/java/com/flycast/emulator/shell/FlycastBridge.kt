@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import com.flycast.emulator.Emulator
 import com.flycast.emulator.NativeGLActivity
+import com.flycast.emulator.emu.HttpClient
 import com.flycast.emulator.emu.JNIdc
 import gb.frame.Covers
 import gb.frame.HomeTheme
@@ -36,6 +37,7 @@ object FlycastBridge {
         PlayTime.init(prefs)
         Covers.init(File(app.filesDir, "gbcast"), "Sega - Dreamcast")
         app.ensureCore()?.let { error -> throw IllegalStateException(error) }
+        HttpClient.initialize()
         if (!sharedRaInitialized) {
             RetroAchievements.init(app, "GBCast", appVersion(app), com.flycast.emulator.shell.ui.GBCastRaBackend)
             sharedRaInitialized = true

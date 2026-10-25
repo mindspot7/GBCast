@@ -88,7 +88,7 @@ public abstract class BaseGLActivity extends ComponentActivity implements Activi
         prefs = PreferenceManager.getDefaultSharedPreferences(this);
 
         Emulator.setCurrentActivity(this);
-        new HttpClient().nativeInit();
+        HttpClient.initialize();
 
         String homeDir = prefs.getString(Config.pref_home, "");
         // Check that home dir is valid

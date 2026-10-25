@@ -45,10 +45,19 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class HttpClient {
+    private static HttpClient instance;
     private CloseableHttpClient httpClient;
     private String userAgent = "Flycast/1.0";
 
     static { System.loadLibrary("flycast"); }
+
+    /** Registers the Java HTTP bridge before native RetroAchievements initialization. */
+    public static synchronized void initialize() {
+        if (instance == null) {
+            instance = new HttpClient();
+            instance.nativeInit();
+        }
+    }
 
     // Called from native code
     public void init(String userAgent) {

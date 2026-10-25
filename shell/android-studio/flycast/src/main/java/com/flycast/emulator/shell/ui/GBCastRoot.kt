@@ -118,9 +118,9 @@ fun GBCastRoot(onQuit: () -> Unit) {
                             Screen.Library -> LibraryScreen(
                                 onOpenSettings = { settingsPage = it; screen = Screen.Settings },
                                 onQuit = onQuit,
-                                launch = { path, slot ->
+                                launch = { path, slot, fresh ->
                                     scope.launch {
-                                        FlycastBridge.launch(ctx, path, slot)?.let { snackbar.showSnackbar(it) }
+                                        FlycastBridge.launch(ctx, path, slot, fresh)?.let { snackbar.showSnackbar(it) }
                                     }
                                 },
                             )

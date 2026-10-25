@@ -1,6 +1,5 @@
 package com.flycast.emulator.shell.ui
 
-import android.app.Activity
 import android.content.Context
 import android.content.SharedPreferences
 import android.preference.PreferenceManager
@@ -14,6 +13,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import com.flycast.emulator.Emulator
 import com.flycast.emulator.emu.JNIdc
 import com.flycast.emulator.emu.VGamepad
 import com.flycast.emulator.shell.GbcastGameUi
@@ -96,6 +96,7 @@ object DreamcastControls : ControlsHost {
         if (::prefs.isInitialized) prefs else error("DreamcastControls has not been initialized")
 
     fun initialize(context: Context) {
+        if (::prefs.isInitialized) return
         prefs = PreferenceManager.getDefaultSharedPreferences(context.applicationContext)
         keyMap = readKeyMap()
         storedHotkeys = readHotkeys()
@@ -178,12 +179,12 @@ object DreamcastControls : ControlsHost {
     }
 
     @JvmStatic
-    fun configureHotkeys(activity: Activity) {
+    fun configureHotkeys() {
         Hotkeys.configure(bindings = { hotkeys }, run = { action, down ->
             when (action) {
                 HotkeyAction.QuickSave -> if (down) JNIdc.saveCurrentSlot()
                 HotkeyAction.QuickLoad -> if (down) JNIdc.loadCurrentSlot()
-                HotkeyAction.Menu -> if (down) GbcastGameUi.onAndroidBack(activity)
+                HotkeyAction.Menu -> if (down) Emulator.getCurrentActivity()?.let(GbcastGameUi::onAndroidBack)
                 HotkeyAction.FastForward -> {
                     val enabled = if (fastForwardToggle) {
                         if (down) ffActive = !ffActive
@@ -265,3 +266,4 @@ private val DreamcastPad = PadLayout(listOf(
         center = androidx.compose.ui.geometry.Offset(cw * .50f, ch * .414f),
     )
 })
+

@@ -12,6 +12,7 @@ import gb.frame.LibraryView
 import gb.frame.OpenDisc
 import gb.frame.PlayTime
 import gb.frame.RetroAchievements
+import gb.frame.SaveData
 import java.io.File
 
 /** Coordinates the Compose shell with the Flycast core. One staged disc stays open until the next launch. */
@@ -19,6 +20,8 @@ object FlycastBridge {
     const val EXTRA_PATH = "gbcast_game_path"
     const val EXTRA_SLOT = "gbcast_state_slot"
     const val EXTRA_LOAD = "gbcast_load_state"
+    const val EXTRA_RESTORE_AUTO_LOAD = "gbcast_restore_auto_load"
+    const val EXTRA_AUTO_LOAD_VALUE = "gbcast_auto_load_value"
 
     private const val PREF_GAMES = "gbcast.gamesDir"
     private const val PREF_SETUP = "gbcast.setupDone"
@@ -37,6 +40,10 @@ object FlycastBridge {
         PlayTime.init(prefs)
         Covers.init(File(app.filesDir, "gbcast"), "Sega - Dreamcast")
         app.ensureCore()?.let { error -> throw IllegalStateException(error) }
+        val savedSlot = int("config", "Dreamcast.SavestateSlot")
+        if (savedSlot !in 0 until SaveData.MANUAL_SAVE_STATE_SLOTS) {
+            setInt("config", "Dreamcast.SavestateSlot", 0)
+        }
         HttpClient.initialize()
         if (!sharedRaInitialized) {
             RetroAchievements.init(app, "GBCast", appVersion(app), com.flycast.emulator.shell.ui.GBCastRaBackend)
@@ -78,19 +85,33 @@ object FlycastBridge {
     fun biosPresent(): Boolean = File(dataDir(), "dc_boot.bin").isFile || File(dataDir(), "dc_boot.bin.bak").isFile
 
     /** Opens [safPath] and starts [NativeGLActivity]. [slot] loads that Flycast state after boot when auto-load is off. */
-    fun launch(context: Context, safPath: String, slot: Int = -1): String? {
+    fun launch(context: Context, safPath: String, slot: Int = -1, fresh: Boolean = false): String? {
+        if (slot != -1 && slot !in 0 until SaveData.MANUAL_SAVE_STATE_SLOTS) {
+            return "Save slot must be between 1 and ${SaveData.MANUAL_SAVE_STATE_SLOTS}."
+        }
         val opened = Storage.openForCore(safPath) ?: return "Could not open this game. Check the folder permission and the disc files."
         disc?.close()
         disc = opened
         PlayTime.update(safPath, true)
         if (slot >= 0) setInt("config", "Dreamcast.SavestateSlot", slot)
         val auto = bool("config", "Dreamcast.AutoLoadState")
+        val restoreAutoLoad = fresh && auto
+        if (restoreAutoLoad) setBool("config", "Dreamcast.AutoLoadState", false)
         val intent = Intent(context, NativeGLActivity::class.java)
             .putExtra(EXTRA_PATH, opened.path)
             .putExtra(EXTRA_SLOT, slot)
             .putExtra(EXTRA_LOAD, slot >= 0 && !auto)
+            .putExtra(EXTRA_RESTORE_AUTO_LOAD, restoreAutoLoad)
+            .putExtra(EXTRA_AUTO_LOAD_VALUE, auto)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(intent)
+        try {
+            context.startActivity(intent)
+        } catch (_: Exception) {
+            if (restoreAutoLoad) setBool("config", "Dreamcast.AutoLoadState", auto)
+            opened.close()
+            disc = null
+            return "Could not start this game."
+        }
         return null
     }
 
@@ -102,6 +123,7 @@ object FlycastBridge {
             val match = Regex("^(.*?)(?:_(\\d+))?\\.state$").matchEntire(file.name) ?: return@mapNotNull null
             val base = match.groupValues[1]
             val slot = match.groupValues[2].toIntOrNull() ?: 0
+            if (slot !in 0 until SaveData.MANUAL_SAVE_STATE_SLOTS) return@mapNotNull null
             val game = byName[base] ?: return@mapNotNull null
             SaveSlot(game.path, game.title, slot, file.lastModified())
         }.sortedByDescending { it.time }
@@ -109,3 +131,4 @@ object FlycastBridge {
 
     data class SaveSlot(val gamePath: String, val title: String, val slot: Int, val time: Long)
 }
+

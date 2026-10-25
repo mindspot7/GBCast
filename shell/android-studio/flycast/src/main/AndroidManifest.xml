@@ -37,10 +37,10 @@
 
     <application
         android:name="com.flycast.emulator.Emulator"
-        android:icon="@drawable/ic_gbcast"
+        android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
-        android:roundIcon="@drawable/ic_gbcast"
+        android:roundIcon="@mipmap/ic_launcher"
         android:banner="@drawable/ic_banner"
         android:logo="@drawable/ic_banner"
         android:hardwareAccelerated="true"

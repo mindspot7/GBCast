@@ -529,8 +529,10 @@ void Achievements::loginWithToken(const char *username, const char *token)
 	config::AchievementsToken = token ? token : "";
 	SaveSettings();
 	loginPending = true;
-	raLoginError.clear();
-	rc_client_begin_login_with_token(rc_client, username, token, clientLoginWithTokenCallback, nullptr);
+	setLoginError("");
+	rc_client_begin_login_with_token(rc_client,
+			config::AchievementsUserName.get().c_str(), config::AchievementsToken.get().c_str(),
+			clientLoginWithTokenCallback, nullptr);
 }
 
 void Achievements::setHardcore(bool enabled)

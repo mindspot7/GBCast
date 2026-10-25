@@ -13,7 +13,6 @@ import com.flycast.emulator.shell.ui.GBCastRoot
 import com.flycast.emulator.shell.ui.DreamcastControls
 import gb.frame.ControlsCapture
 import gb.frame.HomeKeys
-import gb.frame.MenuState
 import gb.frame.HomeTheme
 import gb.frame.PlayTime
 import gb.frame.setControllerContent
@@ -70,13 +69,12 @@ class LibraryActivity : ComponentActivity() {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        if (ControlsCapture.dispatch(event, DreamcastControls)) return true
         if (event.keyCode == KeyEvent.KEYCODE_BUTTON_B && event.action == KeyEvent.ACTION_DOWN) {
             lastGamepadBAt = event.eventTime
             lastGamepadBDevice = event.deviceId
         }
-        if (HomeKeys.dispatch(event, enabled = MenuState.libraryShown && !ControlsCapture.active(DreamcastControls))) return true
-        if (event.keyCode == KeyEvent.KEYCODE_BACK) {
+        val captureActive = ControlsCapture.active(DreamcastControls)
+        if (event.keyCode == KeyEvent.KEYCODE_BACK && !captureActive) {
             val fromController = event.source and (InputDevice.SOURCE_GAMEPAD or InputDevice.SOURCE_DPAD) != 0
             if (fromController && event.action == KeyEvent.ACTION_DOWN &&
                 event.deviceId == lastGamepadBDevice &&
@@ -94,7 +92,11 @@ class LibraryActivity : ComponentActivity() {
             }
             return backKey(event)
         }
-        if (event.keyCode == KeyEvent.KEYCODE_BUTTON_B) return backKey(event)
+        if (event.keyCode == KeyEvent.KEYCODE_BUTTON_B && !captureActive) return backKey(event)
+        // Keep the same dispatch order as GBsat: library shortcuts run only outside remapping, then
+        // the shared capture helper gets the event before any app-specific handling.
+        if (HomeKeys.dispatch(event, enabled = !captureActive)) return true
+        if (ControlsCapture.dispatch(event, DreamcastControls)) return true
         val mapped = when (event.keyCode) {
             KeyEvent.KEYCODE_BUTTON_A -> KeyEvent.KEYCODE_DPAD_CENTER
             else -> null

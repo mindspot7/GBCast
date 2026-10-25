@@ -6,3 +6,5 @@ Build request: GBFrame current-main sync and final UI validation 2026-10-25
 Build request: AutoMirrored volume icon fix 2026-10-25
 
 Build request: Dreamcast controller launcher icon 2026-10-25
+
+Build request: GBCast startup failure diagnostics 2026-10-25

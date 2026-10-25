@@ -2,6 +2,7 @@ package com.flycast.emulator.shell
 
 import android.content.Context
 import android.content.Intent
+import app.gbcast.emulator.BuildConfig
 import com.flycast.emulator.Emulator
 import com.flycast.emulator.NativeGLActivity
 import com.flycast.emulator.emu.JNIdc
@@ -10,6 +11,7 @@ import gb.frame.HomeTheme
 import gb.frame.LibraryView
 import gb.frame.OpenDisc
 import gb.frame.PlayTime
+import gb.frame.RetroAchievements
 import java.io.File
 
 /** Coordinates the Compose shell with the Flycast core. One staged disc stays open until the next launch. */
@@ -20,6 +22,7 @@ object FlycastBridge {
 
     private const val PREF_GAMES = "gbcast.gamesDir"
     private const val PREF_SETUP = "gbcast.setupDone"
+    private var sharedRaInitialized = false
 
     var disc: OpenDisc? = null
         private set
@@ -34,6 +37,10 @@ object FlycastBridge {
         PlayTime.init(prefs)
         Covers.init(File(app.filesDir, "gbcast"), "Sega - Dreamcast")
         app.ensureCore()?.let { error -> throw IllegalStateException(error) }
+        if (!sharedRaInitialized) {
+            RetroAchievements.init(app, "GBCast", BuildConfig.VERSION_NAME, com.flycast.emulator.shell.ui.GBCastRaBackend)
+            sharedRaInitialized = true
+        }
     }
 
     fun gamesDir(): String = Storage.gamesDir

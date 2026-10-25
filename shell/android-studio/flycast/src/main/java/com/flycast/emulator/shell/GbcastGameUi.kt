@@ -11,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -271,7 +272,7 @@ object GbcastGameUi {
                     "aica.AutoLatency" to "Automatic latency",
                 )) {
                     gb.frame.QuickMenuItemRow(
-                        id = key, icon = androidx.compose.material.icons.Icons.Default.VolumeUp,
+                        id = key, icon = androidx.compose.material.icons.Icons.AutoMirrored.Filled.VolumeUp,
                         label = label, value = if (currentBool("config", key)) "On" else "Off",
                     ) { setBool("config", key, !currentBool("config", key)) }
                 }

@@ -44,7 +44,6 @@ object GbcastGameUi {
     private var compose: ComposeView? = null
     private var glView: View? = null
     private var message by mutableStateOf<String?>(null)
-    private var slot by mutableIntStateOf(0)
 
     @JvmStatic
     fun attach(activity: Activity, layout: ViewGroup, gameView: View) {
@@ -91,7 +90,6 @@ object GbcastGameUi {
         compose?.visibility = View.VISIBLE
         compose?.requestFocusFromTouch()
         compose?.requestFocus()
-        slot = JNIdc.configGetInt("config", "Dreamcast.SavestateSlot").coerceAtLeast(0)
     }
 
     private fun resume() {
@@ -120,12 +118,10 @@ object GbcastGameUi {
         }
 
         fun currentBool(section: String, name: String): Boolean {
-            val revision = tick
-            return JNIdc.configGetBool(section, name)
+            return tick.let { JNIdc.configGetBool(section, name) }
         }
         fun currentInt(section: String, name: String): Int {
-            val revision = tick
-            return JNIdc.configGetInt(section, name)
+            return tick.let { JNIdc.configGetInt(section, name) }
         }
         fun setBool(section: String, name: String, value: Boolean) {
             JNIdc.configSetBool(section, name, value)
@@ -156,7 +152,6 @@ object GbcastGameUi {
 
         val savePage = androidx.compose.runtime.remember {
             gb.frame.QuickMenuPage("save-state", "Save state") {
-                val revision = tick
                 for (index in 0..9) {
                     val exists = hasState(index)
                     gb.frame.QuickMenuItemRow(
@@ -166,8 +161,7 @@ object GbcastGameUi {
                         value = if (exists) "Overwrite" else "Empty",
                     ) {
                         JNIdc.configSetInt("config", "Dreamcast.SavestateSlot", index)
-                        slot = index
-                        JNIdc.saveCurrentSlot()
+                                JNIdc.saveCurrentSlot()
                         toast("Saved slot " + (index + 1))
                         dismiss()
                     }
@@ -193,7 +187,6 @@ object GbcastGameUi {
                             dismiss()
                         } else {
                             toast("Could not load slot " + (index + 1))
-                            tick++
                         }
                     }
                 }
@@ -395,7 +388,6 @@ object GbcastGameUi {
         val rootPage = androidx.compose.runtime.remember {
             gb.frame.QuickMenuPage("gbcast-root", "Paused") {
                 val revision = tick
-                val gameTitle = File(JNIdc.currentGamePath().orEmpty()).nameWithoutExtension
                 gb.frame.QuickMenuItemRow(
                     id = "resume", icon = androidx.compose.material.icons.Icons.Default.PlayArrow,
                     label = "Resume",

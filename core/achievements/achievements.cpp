@@ -423,6 +423,8 @@ void Achievements::authenticationSuccess(const rc_client_user_t *user)
 		});
 	}
 	loggedOn = true;
+	loginPending = false;
+	raLoginError.clear();
 	if (!settings.content.fileName.empty()) // TODO better test?
 		loadGame();
 }
@@ -433,6 +435,8 @@ void Achievements::clientLoginWithTokenCallback(int result, const char *error_me
 	Achievements *achievements = (Achievements *)rc_client_get_userdata(client);
 	if (result != RC_OK)
 	{
+		achievements->loginPending = false;
+		achievements->raLoginError = error_message ? error_message : "RetroAchievements authentication failed";
 		WARN_LOG(COMMON, "RA Login failed: %s", error_message);
 		notifier.notify(Notification::Login, "", i18n::Ts("RetroAchievements authentication failed"), error_message);
 		return;
@@ -443,6 +447,10 @@ void Achievements::clientLoginWithTokenCallback(int result, const char *error_me
 std::future<void> Achievements::login(const char* username, const char* password)
 {
 	init();
+	config::AchievementsUserName = username;
+	SaveSettings();
+	loginPending = true;
+	raLoginError.clear();
 	std::promise<void> *promise = new std::promise<void>();
 	auto future = promise->get_future();
 	rc_client_begin_login_with_password(rc_client, username, password, clientLoginWithPasswordCallback, promise);
@@ -459,6 +467,8 @@ void Achievements::clientLoginWithPasswordCallback(int result, const char *error
 		std::string errorMsg = rc_error_str(result);
 		if (error_message != nullptr)
 			errorMsg += ": " + std::string(error_message);
+		achievements->loginPending = false;
+		achievements->raLoginError = errorMsg;
 		promise->set_exception(std::make_exception_ptr(FlycastException(errorMsg)));
 		delete promise;
 		WARN_LOG(COMMON, "RA Login failed: %s", errorMsg.c_str());
@@ -468,6 +478,8 @@ void Achievements::clientLoginWithPasswordCallback(int result, const char *error
 	const rc_client_user_t* user = rc_client_get_user_info(client);
 	if (!user || !user->token)
 	{
+		achievements->loginPending = false;
+		achievements->raLoginError = i18n::Ts("No user token returned");
 		WARN_LOG(COMMON, "RA: rc_client_get_user_info() returned NULL");
 		promise->set_exception(std::make_exception_ptr(FlycastException(i18n::Ts("No user token returned"))));
 		delete promise;
@@ -490,6 +502,48 @@ void Achievements::logout()
 	config::AchievementsToken = "";
 	SaveSettings();
 	loggedOn = false;
+	loginPending = false;
+	raLoginError.clear();
+}
+
+void Achievements::loginWithToken(const char *username, const char *token)
+{
+	init();
+	if (rc_client == nullptr || loggedOn)
+		return;
+	config::AchievementsUserName = username ? username : "";
+	config::AchievementsToken = token ? token : "";
+	SaveSettings();
+	loginPending = true;
+	raLoginError.clear();
+	rc_client_begin_login_with_token(rc_client, username, token, clientLoginWithTokenCallback, nullptr);
+}
+
+void Achievements::setHardcore(bool enabled)
+{
+	config::AchievementsHardcoreMode = enabled;
+	settings.raHardcoreMode = enabled;
+	if (rc_client != nullptr)
+		rc_client_set_hardcore_enabled(rc_client, enabled ? 1 : 0);
+	SaveSettings();
+}
+
+User Achievements::getCurrentUser() const
+{
+	User result;
+	if (rc_client == nullptr)
+		return result;
+	const rc_client_user_t *user = rc_client_get_user_info(rc_client);
+	if (user == nullptr)
+		return result;
+	result.username = user->username ? user->username : "";
+	result.token = user->token ? user->token : "";
+	result.score = user->score;
+	result.softcoreScore = user->score_softcore;
+	char avatarUrl[256] = {};
+	if (rc_client_user_get_image_url(user, avatarUrl, sizeof(avatarUrl)) == RC_OK)
+		result.avatarUrl = avatarUrl;
+	return result;
 }
 
 void Achievements::clientMessageCallback(const char* message, const rc_client_t* client)

@@ -63,6 +63,7 @@ import com.flycast.emulator.shell.FlycastBridge
 import com.flycast.emulator.shell.GameIndex
 import com.flycast.emulator.shell.Storage
 import gb.frame.HomeHelpBar
+import gb.frame.LibraryBack
 import gb.frame.Covers
 import gb.frame.ConfirmDialog
 import gb.frame.HomeActions
@@ -183,13 +184,12 @@ fun LibraryScreen(
     }
 
     BackHandler {
-        when {
-            confirmQuit -> confirmQuit = false
-            gameMenu != null -> gameMenu = null
-            menuOpen -> menuOpen = false
-            else -> {
-                MenuState.selected = null
-                menuOpen = true
+        LibraryBack.handle {
+            if (gameMenu != null) {
+                gameMenu = null
+                true
+            } else {
+                false
             }
         }
     }

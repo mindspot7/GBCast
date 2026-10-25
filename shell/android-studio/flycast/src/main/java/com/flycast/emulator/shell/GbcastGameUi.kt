@@ -348,6 +348,12 @@ object GbcastGameUi {
             }
         }
 
+        val achievementsPage = androidx.compose.runtime.remember {
+            gb.frame.QuickMenuPage("achievements", "Achievements", fullScreen = true) {
+                gb.frame.AchievementsScreen(onBack = { back() })
+            }
+        }
+
         val gamePage = androidx.compose.runtime.remember {
             gb.frame.QuickMenuPage("game", "Game") {
                 gb.frame.QuickMenuItemRow(
@@ -387,9 +393,9 @@ object GbcastGameUi {
                     label = "Cheats", hasSubmenu = true,
                 ) { openPage(cheatsPage, returnFocusItemId = "cheats") }
                 gb.frame.QuickMenuItemRow(
-                    id = "native-achievements", icon = androidx.compose.material.icons.Icons.Default.SportsEsports,
-                    label = "Flycast achievements",
-                ) { hideForNative(ACHIEVEMENTS) }
+                    id = "achievements", icon = androidx.compose.material.icons.Icons.Default.SportsEsports,
+                    label = "Achievements", hasSubmenu = true,
+                ) { openPage(achievementsPage, returnFocusItemId = "achievements") }
                 message?.let { Text(it, color = androidx.compose.material3.MaterialTheme.colorScheme.error) }
             }
         }

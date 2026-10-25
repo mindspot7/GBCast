@@ -1,6 +1,7 @@
 package com.flycast.emulator;
 
 import android.content.Context;
+import android.hardware.input.InputManager;
 import android.os.Bundle;
 import android.text.InputType;
 import android.util.Log;
@@ -30,6 +31,12 @@ public final class NativeGLActivity extends BaseGLActivity {
     private boolean mScreenKeyboardShown;
     private boolean restoreAutoLoadAfterStart;
     private boolean originalAutoLoadState;
+    private InputManager inputManager;
+    private final InputManager.InputDeviceListener gamepadListener = new InputManager.InputDeviceListener() {
+        @Override public void onInputDeviceAdded(int id) { updateTouchControlsVisibility(); }
+        @Override public void onInputDeviceRemoved(int id) { updateTouchControlsVisibility(); }
+        @Override public void onInputDeviceChanged(int id) { updateTouchControlsVisibility(); }
+    };
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -50,6 +57,8 @@ public final class NativeGLActivity extends BaseGLActivity {
         setContentView(mLayout);
         com.flycast.emulator.shell.GbcastGameUi.attach(this, mLayout, mView);
         DreamcastControls.INSTANCE.initialize(this);
+        inputManager = (InputManager) getSystemService(Context.INPUT_SERVICE);
+        if (inputManager != null) inputManager.registerInputDeviceListener(gamepadListener, null);
         DreamcastControls.configureHotkeys();
         wantLoad = getIntent().getBooleanExtra("gbcast_load_state", false);
         Log.i("flycast", "NativeGLActivity.onCreate done");
@@ -58,6 +67,7 @@ public final class NativeGLActivity extends BaseGLActivity {
     @Override
     protected void onDestroy() {
         try {
+            if (inputManager != null) inputManager.unregisterInputDeviceListener(gamepadListener);
             restoreAutoLoadSetting();
             super.onDestroy();
         } finally {
@@ -104,10 +114,27 @@ public final class NativeGLActivity extends BaseGLActivity {
         controller.setSystemBarsBehavior(androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
     }
 
+    private boolean hasPhysicalGamepad() {
+        if (inputManager == null) return false;
+        for (int id : inputManager.getInputDeviceIds()) {
+            InputDevice device = inputManager.getInputDevice(id);
+            if (device == null || device.isVirtual()) continue;
+            int sources = device.getSources();
+            if ((sources & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD ||
+                    (sources & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK) return true;
+        }
+        return false;
+    }
+
+    /** Enforce the GBFrame contract: physical controllers take precedence over on-screen controls. */
+    private void updateTouchControlsVisibility() {
+        setTouchControlsVisible(DreamcastControls.INSTANCE.getShowTouchControls() && !hasPhysicalGamepad());
+    }
+
     /** Update the on-screen controls while a game is already running. */
     public void setTouchControlsVisible(boolean visible) {
         if (mView == null) return;
-        if (visible) mView.showVGamepad();
+        if (visible && !hasPhysicalGamepad()) mView.showVGamepad();
         else VGamepad.hide();
     }
 
@@ -135,8 +162,7 @@ public final class NativeGLActivity extends BaseGLActivity {
             public void run() {
                 if (started) {
                     restoreAutoLoadSetting();
-                    if (DreamcastControls.INSTANCE.getShowTouchControls()) mView.showVGamepad();
-                    else VGamepad.hide();
+                    updateTouchControlsVisibility();
                     if (wantLoad)
                         handler.post(NativeGLActivity.this::tryLoadState);
                 }

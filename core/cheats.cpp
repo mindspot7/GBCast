@@ -378,6 +378,28 @@ void CheatManager::setActive(bool active)
 		EventManager::unlisten(Event::VBlank, vblankCallback, this);
 }
 
+void CheatManager::removeCheat(size_t index)
+{
+	if (index >= cheats.size() || cheats[index].builtIn)
+		return;
+
+	cheats.erase(cheats.begin() + index);
+	setActive(!cheats.empty());
+
+#ifndef LIBRETRO
+	if (!gameId.empty())
+	{
+		std::string path = config::loadStr("cheats", gameId);
+		if (path.empty())
+		{
+			path = get_game_save_prefix() + ".cht";
+			config::saveStr("cheats", gameId, path);
+		}
+		saveCheatFile(path);
+	}
+#endif
+}
+
 void CheatManager::loadCheatFile(const std::string& filename)
 {
 #ifndef LIBRETRO

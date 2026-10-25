@@ -339,6 +339,15 @@ object GbcastGameUi {
             }
         }
 
+        val cheatsPage = androidx.compose.runtime.remember {
+            gb.frame.QuickMenuPage("cheats", "Cheats", fullScreen = true) {
+                gb.frame.CheatsScreen(
+                    backend = com.flycast.emulator.shell.ui.GBCastCheatsBackend,
+                    onBack = { back() },
+                )
+            }
+        }
+
         val gamePage = androidx.compose.runtime.remember {
             gb.frame.QuickMenuPage("game", "Game") {
                 gb.frame.QuickMenuItemRow(
@@ -374,9 +383,9 @@ object GbcastGameUi {
                     label = "Flycast settings",
                 ) { hideForNative(SETTINGS) }
                 gb.frame.QuickMenuItemRow(
-                    id = "native-cheats", icon = androidx.compose.material.icons.Icons.Default.Memory,
-                    label = "Flycast cheats",
-                ) { hideForNative(CHEATS) }
+                    id = "cheats", icon = androidx.compose.material.icons.Icons.Default.Memory,
+                    label = "Cheats", hasSubmenu = true,
+                ) { openPage(cheatsPage, returnFocusItemId = "cheats") }
                 gb.frame.QuickMenuItemRow(
                     id = "native-achievements", icon = androidx.compose.material.icons.Icons.Default.SportsEsports,
                     label = "Flycast achievements",

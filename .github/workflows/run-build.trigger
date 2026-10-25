@@ -1,3 +1,4 @@
 Controlled build trigger. Update this file only when an intentional GBCast validation build is requested.
-Validation commit: 4adf033aa062302891c67e97ff892305273ac8ba
+Validation commit: 812446cd1672a8096c14dfcd5fa19252309fe00b
+Build request: Kotlin and quick-menu Back fixes 2026-10-25
 Build request: GBFrame UI adapter validation 2026-10-25

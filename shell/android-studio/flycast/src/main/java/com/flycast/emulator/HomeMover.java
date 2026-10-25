@@ -18,6 +18,8 @@
 */
 package com.flycast.emulator;
 
+import app.gbcast.emulator.R;
+
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;

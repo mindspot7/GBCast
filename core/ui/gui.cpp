@@ -517,7 +517,10 @@ static void savestate()
 
 void cycleSaveStateSlot(int step)
 {
-	config::SavestateSlot = (config::SavestateSlot + 10 + step) % 10;
+	// Keep the core's legacy slot picker aligned with GBFrame's shared five-slot limit.
+	constexpr int manualSaveStateSlots = 5;
+	int slot = ((int)config::SavestateSlot % manualSaveStateSlots + manualSaveStateSlots) % manualSaveStateSlots;
+	config::SavestateSlot = (slot + manualSaveStateSlots + step) % manualSaveStateSlots;
 	SaveSettings();
 }
 
@@ -1705,3 +1708,4 @@ bool __cdecl Concurrency::details::_Task_impl_base::_IsNonBlockingThread() {
 	return false;
 }
 #endif
+

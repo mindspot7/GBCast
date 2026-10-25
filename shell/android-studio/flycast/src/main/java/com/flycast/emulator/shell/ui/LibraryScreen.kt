@@ -241,7 +241,7 @@ fun LibraryScreen(
         ) {
             if (!fullscreen) {
                 HomeTopBar(
-                    painterResource(R.drawable.ic_gbcast),
+                    painterResource(R.mipmap.ic_launcher),
                     "GBCast",
                     onClick = {
                         if (!menuOpen) MenuState.selected = null
@@ -283,7 +283,7 @@ fun LibraryScreen(
             open = menuOpen,
             onDismiss = { menuOpen = false },
             focus = menuFocus,
-            appIcon = painterResource(R.drawable.ic_gbcast),
+            appIcon = painterResource(R.mipmap.ic_launcher),
             appName = "GBCast",
             themeLabel = style.label,
             fullscreen = fullscreen,

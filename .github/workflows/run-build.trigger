@@ -15,4 +15,5 @@ Build request: Fix missing GBFrame LibraryBack import and rerun final parity bui
 Build request: align APK naming and document GBFrame app brand asset convention 2026-10-25
 Build request: use the installed app launcher icon in GBCast top bar, main menu, and About 2026-10-25
 Build request: enforce GBFrame five manual save-state slots in GBCast 2026-10-25
+Build request: fix launch callback arity and apply GBFrame majority box-art aspect ratios 2026-10-25
 

@@ -20,3 +20,6 @@ core/deps/glslang/
 .cache/
 compile_commands.json
 CMakeUserPresets.json
+
+# Device-test artifacts from tools/gbcast.ps1
+test-output/

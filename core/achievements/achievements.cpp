@@ -55,8 +55,10 @@ public:
 	std::future<void> login(const char *username, const char *password);
 	void loginWithToken(const char *username, const char *token);
 	void logout();
-	void setHardcore(bool enabled);
-	bool isHardcore() const { return settings.raHardcoreMode; }
+ 	void setHardcore(bool enabled);
+	bool isHardcore() const {
+		return rc_client != nullptr ? rc_client_get_hardcore_enabled(rc_client) != 0 : (bool)config::AchievementsHardcoreMode;
+	}
 	bool isLoginPending() const { return loginPending.load(); }
 	std::string lastLoginError() const {
 		std::lock_guard<std::mutex> lock(loginErrorMutex);
@@ -454,7 +456,7 @@ void Achievements::clientLoginWithTokenCallback(int result, const char *error_me
 
 std::future<void> Achievements::login(const char* username, const char* password)
 {
- 	init();
+	init();
 	config::EnableAchievements = true;
 	config::AchievementsUserName = username;
 	SaveSettings();
@@ -506,20 +508,21 @@ void Achievements::clientLoginWithPasswordCallback(int result, const char *error
 void Achievements::logout()
 {
 	unloadGame();
-	rc_client_logout(rc_client);
+	if (rc_client != nullptr)
+		rc_client_logout(rc_client);
 	// Reset token in config
 	config::AchievementsToken = "";
 	config::EnableAchievements = false;
 	SaveSettings();
 	loggedOn = false;
 	loginPending = false;
-	raLoginError.clear();
+	setLoginError("");
 }
 
 void Achievements::loginWithToken(const char *username, const char *token)
 {
 	init();
-	if (rc_client == nullptr || loggedOn)
+	if (rc_client == nullptr || loggedOn || loginPending.load())
 		return;
 	config::EnableAchievements = true;
 	config::AchievementsUserName = username ? username : "";

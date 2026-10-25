@@ -37,7 +37,7 @@ class LibraryActivity : ComponentActivity() {
         setControllerContent {
             if (error != null) {
                 androidx.compose.material3.Text(
-                    "GBCast failed to initialize. Please send this message to support:\\n" +
+                    "GBCast failed to initialize. Please send this message to support:\n" +
                         (error.message ?: error.javaClass.simpleName)
                 )
             } else {
@@ -71,6 +71,18 @@ class LibraryActivity : ComponentActivity() {
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (ControlsCapture.dispatch(event, DreamcastControls)) return true
+        // HomeKeys owns GBFrame's menu state, while GBCast renders its own MenuState.
+        // Handle X here so the library shortcut toggles the menu that is actually visible.
+        if (event.keyCode == KeyEvent.KEYCODE_BUTTON_X &&
+            MenuState.libraryShown &&
+            !ControlsCapture.active(DreamcastControls)
+        ) {
+            if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+                if (!MenuState.open.value) MenuState.selected = null
+                MenuState.open.value = !MenuState.open.value
+            }
+            return true
+        }
         if (event.keyCode == KeyEvent.KEYCODE_BUTTON_B && event.action == KeyEvent.ACTION_DOWN) {
             lastGamepadBAt = event.eventTime
             lastGamepadBDevice = event.deviceId

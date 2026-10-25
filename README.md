@@ -2,7 +2,9 @@
 
 Android shell for the Flycast core (Dreamcast, Naomi, Naomi 2 and Atomiswave) using the shared [GBFrame](https://github.com/mindspot7/GBFrame) library. The launcher is the GBCast game library. `NativeGLActivity` still renders with Flycast's existing GLES/Vulkan path.
 
-GBFrame is the git submodule `libs/gbframe` (commit `1f869337e6dbf67e039ee2752aa99ca459bc23b0` on `main`). The application id stays `com.flycast.emulator`. `minSdk` is **28** because that is GBFrame's minimum; the previous Flycast Android app allowed API 21.
+GBFrame is the git submodule `libs/gbframe` (commit `1f869337e6dbf67e039ee2752aa99ca459bc23b0` on `main`). The Android `applicationId` and Gradle `namespace` are both `app.gbcast.emulator`. `minSdk` is **28** because that is GBFrame's minimum; the previous Flycast Android app allowed API 21.
+
+**Migration note:** changing the application ID from `com.flycast.emulator` to `app.gbcast.emulator` makes Android treat GBCast as a different app. Existing installations will not be updated in place, and app-private data will not automatically transfer. Back up any important data before switching.
 
 ## Android library
 

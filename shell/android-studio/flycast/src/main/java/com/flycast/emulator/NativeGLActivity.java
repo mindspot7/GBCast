@@ -28,11 +28,17 @@ public final class NativeGLActivity extends BaseGLActivity {
     private NativeGLView mView;
     View mTextEdit;
     private boolean mScreenKeyboardShown;
+    private boolean restoreAutoLoadAfterStart;
+    private boolean originalAutoLoadState;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         Log.i("flycast", "NativeGLActivity.onCreate");
         requestWindowFeature(Window.FEATURE_NO_TITLE);
+        restoreAutoLoadAfterStart = getIntent().getBooleanExtra(
+                com.flycast.emulator.shell.FlycastBridge.EXTRA_RESTORE_AUTO_LOAD, false);
+        originalAutoLoadState = getIntent().getBooleanExtra(
+                com.flycast.emulator.shell.FlycastBridge.EXTRA_AUTO_LOAD_VALUE, false);
 
         super.onCreate(savedInstanceState);
 
@@ -52,6 +58,7 @@ public final class NativeGLActivity extends BaseGLActivity {
     @Override
     protected void onDestroy() {
         try {
+            restoreAutoLoadSetting();
             super.onDestroy();
         } finally {
             // The shared detector tracks held/suppressed buttons process-wide; clear it when the game session ends.
@@ -127,6 +134,7 @@ public final class NativeGLActivity extends BaseGLActivity {
         runOnUiThread(new Runnable() {
             public void run() {
                 if (started) {
+                    restoreAutoLoadSetting();
                     if (DreamcastControls.INSTANCE.getShowTouchControls()) mView.showVGamepad();
                     else VGamepad.hide();
                     if (wantLoad)
@@ -134,6 +142,14 @@ public final class NativeGLActivity extends BaseGLActivity {
                 }
             }
         });
+    }
+
+    private void restoreAutoLoadSetting() {
+        if (restoreAutoLoadAfterStart) {
+            com.flycast.emulator.emu.JNIdc.configSetBool(
+                    "config", "Dreamcast.AutoLoadState", originalAutoLoadState);
+            restoreAutoLoadAfterStart = false;
+        }
     }
 
     private void tryLoadState() {

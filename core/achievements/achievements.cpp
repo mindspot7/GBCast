@@ -1096,10 +1096,12 @@ Game Achievements::getCurrentGame()
 	const rc_client_game_t *info = rc_client_get_game_info(rc_client);
 	if (info == nullptr)
 		return Game{};
-	char url[128];
+	char url[128] = {};
 	std::string image;
+	std::string imageUrl;
 	if (rc_client_game_get_image_url(info, url, sizeof(url)) == RC_OK)
 	{
+		imageUrl = url;
 		bool cached;
 		std::tie(image, cached) = getCachedImage(url);
 		if (!cached) {
@@ -1110,7 +1112,8 @@ Game Achievements::getCurrentGame()
 	rc_client_user_game_summary_t summary;
 	rc_client_get_user_game_summary(rc_client, &summary);
 
-	return Game{ image, info->title, summary.num_unlocked_achievements, summary.num_core_achievements, summary.points_unlocked, summary.points_core };
+	return Game{ image, info->title, summary.num_unlocked_achievements, summary.num_core_achievements,
+			summary.points_unlocked, summary.points_core, imageUrl, settings.raHardcoreMode };
 }
 
 std::vector<Achievement> Achievements::getAchievementList()
@@ -1126,19 +1129,33 @@ std::vector<Achievement> Achievements::getAchievementList()
 		for (u32 j = 0; j < list->buckets[i].num_achievements; j++)
 		{
 			const rc_client_achievement_t *achievement = list->buckets[i].achievements[j];
-			char url[128];
+			char url[128] = {};
+			char lockedUrl[128] = {};
 			std::string image;
+			std::string imageUrl;
+			std::string lockedImageUrl;
 			if (rc_client_achievement_get_image_url(achievement, achievement->state, url, sizeof(url)) == RC_OK)
 			{
+				imageUrl = url;
 				bool cached;
 				std::tie(image, cached) = getCachedImage(url);
 				if (!cached)
 					uncachedImages.push_back(url);
 			}
+			if (rc_client_achievement_get_image_url(achievement, RC_CLIENT_ACHIEVEMENT_STATE_INACTIVE,
+					lockedUrl, sizeof(lockedUrl)) == RC_OK)
+				lockedImageUrl = lockedUrl;
 			std::string status;
 			if (achievement->measured_percent)
 				status = achievement->measured_progress;
-			achievements.emplace_back(image, achievement->title, achievement->description, label, status);
+			Achievement item(image, achievement->title, achievement->description, label, status);
+			item.id = achievement->id;
+			item.points = achievement->points;
+			item.unlocked = achievement->unlocked != 0;
+			item.imageUrl = imageUrl;
+			item.lockedImageUrl = lockedImageUrl;
+			item.progress = status;
+			achievements.push_back(std::move(item));
 		}
 	}
 	rc_client_destroy_achievement_list(list);

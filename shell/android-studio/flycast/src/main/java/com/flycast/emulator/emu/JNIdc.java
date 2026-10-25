@@ -54,4 +54,22 @@ public final class JNIdc
 	public static native void removeCheat(int index);
 	/** Returns null on success or an error message when Flycast rejects the code. */
 	public static native String addGameSharkCheat(String name, String code);
+
+	// Shared GBFrame RetroAchievements adapter. The core owns authentication, networking and game recognition.
+	public static native boolean raInit();
+	public static native void raLogin(String username, String password);
+	public static native void raLoginWithToken(String username, String token);
+	public static native void raLogout();
+	public static native void raSetHardcore(boolean enabled);
+	public static native boolean raIsLoggedOn();
+	public static native boolean raIsActive();
+	public static native boolean raIsLoginPending();
+	public static native boolean raIsHardcore();
+	public static native String raLoginError();
+	/** Tab-separated username, token, avatar URL, hardcore score, softcore score. */
+	public static native String raCurrentUser();
+	/** Tab-separated title, unlocked, total, points, total points, badge URL, hardcore. */
+	public static native String raCurrentGame();
+	/** GBFrame's summary row and achievement rows, tab-separated. */
+	public static native String raAchievements();
 }

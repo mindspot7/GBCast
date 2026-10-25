@@ -70,6 +70,8 @@ object DreamcastControls : ControlsHost {
     override var hotkeyCapture by androidx.compose.runtime.mutableStateOf<HotkeyAction?>(null)
     override var hotkeyCaptureKeys by androidx.compose.runtime.mutableStateOf<Set<Int>>(emptySet())
     private var ffActive = false
+    var fastForwardActive by androidx.compose.runtime.mutableStateOf(false)
+        private set
     private var ffToggleState by androidx.compose.runtime.mutableStateOf(false)
     private var touchState by androidx.compose.runtime.mutableStateOf(true)
 
@@ -188,10 +190,17 @@ object DreamcastControls : ControlsHost {
                         ffActive
                     } else down
                     ffActive = enabled
+                    fastForwardActive = enabled
                     JNIdc.setFastForwardMode(enabled)
                 }
             }
         })
+    }
+
+    fun setFastForward(enabled: Boolean) {
+        ffActive = enabled
+        fastForwardActive = enabled
+        JNIdc.setFastForwardMode(enabled)
     }
 }
 

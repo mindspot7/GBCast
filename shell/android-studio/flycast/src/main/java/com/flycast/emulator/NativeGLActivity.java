@@ -86,6 +86,13 @@ public final class NativeGLActivity extends BaseGLActivity {
         controller.setSystemBarsBehavior(androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
     }
 
+    /** Update the on-screen controls while a game is already running. */
+    public void setTouchControlsVisible(boolean visible) {
+        if (mView == null) return;
+        if (visible) mView.showVGamepad();
+        else VGamepad.hide();
+    }
+
     @Override
     protected void doPause() {
         if (mView != null)

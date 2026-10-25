@@ -48,7 +48,7 @@ object GBCastCheatsBackend : CheatsBackend {
     override fun add(name: String, code: String): CheatActionResult {
         blockedMessage?.let { return CheatActionResult.failure(it) }
         if (code.isBlank()) return CheatActionResult.failure("Enter a GameShark code.")
-        val error = runCatching {
+        val error: String? = runCatching {
             JNIdc.addGameSharkCheat(name.trim().ifBlank { "Cheat" }, code.trim())
         }.getOrElse { it.message ?: "Flycast could not parse that code." }
         if (error != null) return CheatActionResult.failure(error)

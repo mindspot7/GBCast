@@ -126,7 +126,7 @@ fun SettingsScreen(onBack: () -> Unit, toast: (String) -> Unit, page: SettingsPa
         TopAppBar(
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(current.icon, null, tint = Color(0xFFFFB15A))
+                    Icon(current.icon, null, tint = gb.frame.palette.accent)
                     Spacer(Modifier.width(12.dp))
                     Text(current.label, fontWeight = FontWeight.Bold)
                 }

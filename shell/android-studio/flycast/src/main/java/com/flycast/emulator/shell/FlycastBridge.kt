@@ -2,7 +2,6 @@ package com.flycast.emulator.shell
 
 import android.content.Context
 import android.content.Intent
-import app.gbcast.emulator.BuildConfig
 import com.flycast.emulator.Emulator
 import com.flycast.emulator.NativeGLActivity
 import com.flycast.emulator.emu.JNIdc
@@ -38,10 +37,15 @@ object FlycastBridge {
         Covers.init(File(app.filesDir, "gbcast"), "Sega - Dreamcast")
         app.ensureCore()?.let { error -> throw IllegalStateException(error) }
         if (!sharedRaInitialized) {
-            RetroAchievements.init(app, "GBCast", BuildConfig.VERSION_NAME, com.flycast.emulator.shell.ui.GBCastRaBackend)
+            RetroAchievements.init(app, "GBCast", appVersion(app), com.flycast.emulator.shell.ui.GBCastRaBackend)
             sharedRaInitialized = true
         }
     }
+
+    @Suppress("DEPRECATION")
+    private fun appVersion(context: Context): String =
+        runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }
+            .getOrNull() ?: "?"
 
     fun gamesDir(): String = Storage.gamesDir
 

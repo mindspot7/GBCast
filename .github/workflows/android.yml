@@ -2,6 +2,13 @@ name: Android
 # Builds the GBCast release APK from the Flycast core and the GBFrame submodule.
 # Run manually or by committing the dedicated trigger file, only after GBFrame passes.
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   workflow_dispatch:
   push:
@@ -13,7 +20,8 @@ on:
 jobs:
   build:
     name: Android
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
 
     env:
       CCACHE_DIR: ${{ github.workspace }}/.ccache
@@ -59,6 +67,20 @@ jobs:
           test -n "$APK"
           mv "$APK" "$APK_DIR/${NAME}.apk"
           echo "name=${NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify APK 16 KB ZIP alignment
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK_DIR="shell/android-studio/flycast/build/outputs/apk/release"
+          APK=$(find "$APK_DIR" -maxdepth 1 -type f -name '*.apk' -print -quit)
+          test -n "$APK"
+          ZIPALIGN=$(find "$ANDROID_HOME/build-tools" -maxdepth 2 -type f -name zipalign -print | sort -V | tail -n 1)
+          if [ -z "$ZIPALIGN" ]; then
+            echo "::error::Android zipalign tool not found under $ANDROID_HOME/build-tools"
+            exit 1
+          fi
+          "$ZIPALIGN" -c -P 16 -v 4 "$APK"
 
       - uses: actions/upload-artifact@v7
         with:

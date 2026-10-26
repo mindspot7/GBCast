@@ -47,6 +47,12 @@ else()
 	project(flycast)
 endif()
 
+# Android 16 KB page-size compatibility: ensure every native target linked
+# from this project has 16 KB maximum ELF LOAD segment alignment.
+if(ANDROID)
+\tadd_link_options("LINKER:-z,max-page-size=16384")
+endif()
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(CMAKE_SYSTEM_NAME MATCHES "NetBSD|Haiku" OR NINTENDO_SWITCH)

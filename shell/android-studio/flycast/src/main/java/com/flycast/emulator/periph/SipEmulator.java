@@ -1,5 +1,6 @@
 package com.flycast.emulator.periph;
 
+import android.annotation.SuppressLint;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
@@ -29,6 +30,7 @@ public class SipEmulator {
 	== 22050 bytes/s
 	*/
 
+	@SuppressLint("MissingPermission") // Sip setup is only invoked after BaseGLActivity receives RECORD_AUDIO permission.
 	private void init(int samplingFreq){
 		Log.d(TAG, "SipEmulator init called");
 

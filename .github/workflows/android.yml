@@ -47,7 +47,7 @@ jobs:
           GBCAST_VERSION_CODE: ${{ github.run_number }}
         # CI-only values are passed as Gradle properties; tracked source stays unchanged.
         # APK only. The App Bundle (.aab) is built for an official numbered release, when asked for.
-        run: ./gradlew assembleRelease --parallel -PgbcastVersionCode="$GBCAST_VERSION_CODE" -PgbcastCiDebugSigning=true
+        run: ./gradlew testReleaseUnitTest assembleRelease --parallel -PgbcastVersionCode="$GBCAST_VERSION_CODE" -PgbcastCiDebugSigning=true
 
       - name: Name APK with app version
         id: apk

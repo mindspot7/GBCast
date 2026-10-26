@@ -41,16 +41,13 @@ jobs:
           key: ccache-android-${{ github.sha }}
           restore-keys: ccache-android-
 
-      - name: Disable release signing
-        run: sed -i 's/signingConfigs.getByName("release")/signingConfigs.getByName("debug")/' shell/android-studio/flycast/build.gradle.kts
-
-      - name: Bump version code
-        run: sed -i 's/versionCode = 8/versionCode = ${{ github.run_number }}/' shell/android-studio/flycast/build.gradle.kts
-
       - name: Gradle
         working-directory: shell/android-studio
+        env:
+          GBCAST_VERSION_CODE: ${{ github.run_number }}
+        # CI-only values are passed as Gradle properties; tracked source stays unchanged.
         # APK only. The App Bundle (.aab) is built for an official numbered release, when asked for.
-        run: ./gradlew assembleRelease --parallel
+        run: ./gradlew assembleRelease --parallel -PgbcastVersionCode="$GBCAST_VERSION_CODE" -PgbcastCiDebugSigning=true
 
       - name: Name APK with app version
         id: apk
@@ -67,4 +64,3 @@ jobs:
         with:
           name: ${{ steps.apk.outputs.name }}
           path: shell/android-studio/flycast/build/outputs/apk/release/${{ steps.apk.outputs.name }}.apk
-

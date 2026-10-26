@@ -3,11 +3,11 @@ package com.flycast.emulator;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.net.Uri;
 import android.preference.PreferenceManager;
 import android.util.Log;
 
 import com.flycast.emulator.config.Config;
+import com.flycast.emulator.shell.RetroAchievementsHostUrlValidator;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -40,7 +40,7 @@ public class RetroAchievementsHostOverrideReceiver extends BroadcastReceiver {
         String newHost = null;
         if (ACTION_SET.equals(intent.getAction())) {
             newHost = intent.getStringExtra(EXTRA_HOST);
-            if (!isValidHostUrl(newHost)) {
+            if (!RetroAchievementsHostUrlValidator.isValid(newHost)) {
                 Log.w(TAG, "SET broadcast rejected: 'host' must be an absolute HTTP(S) URL without control characters");
                 return;
             }
@@ -75,24 +75,6 @@ public class RetroAchievementsHostOverrideReceiver extends BroadcastReceiver {
     }
 
     private static native void nativeSetHostOverride(String host);
-
-    private static boolean isValidHostUrl(String hostUrl) {
-        if (hostUrl == null || hostUrl.isEmpty()) return false;
-
-        // The value is persisted as one line in emu.cfg. Reject control characters to prevent
-        // a broadcast extra from injecting additional configuration entries.
-        for (int i = 0; i < hostUrl.length(); i++) {
-            if (Character.isISOControl(hostUrl.charAt(i))) return false;
-        }
-
-        Uri uri = Uri.parse(hostUrl);
-        String scheme = uri.getScheme();
-        return uri.isHierarchical()
-                && ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))
-                && uri.getHost() != null
-                && !uri.getHost().isEmpty()
-                && uri.getUserInfo() == null;
-    }
 
     private File resolveConfigFile(Context context) {
         String homeDir = PreferenceManager.getDefaultSharedPreferences(context)

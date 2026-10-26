@@ -32,3 +32,4 @@ Build request: Validate configurable Gradle CI version/signing properties 2026-1
 Build request: Add pure Back transition policy and unit tests 2026-10-26
 
 Build request: Run Back policy unit tests before APK packaging 2026-10-26
+Build request: Validate debug unit test task and release APK 2026-10-26

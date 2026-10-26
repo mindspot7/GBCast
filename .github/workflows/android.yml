@@ -59,6 +59,8 @@ jobs:
 
       - name: Set up Android SDK for managed emulator
         uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
       - name: Install emulator system image
         run: |

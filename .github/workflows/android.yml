@@ -95,7 +95,7 @@ jobs:
           fi
           echo "Resolved Android SDK root: $SDK_ROOT"
           echo "AVD home: $ANDROID_AVD_HOME"
-          printf "no\\n" | "$AVDMANAGER" create avd --force --name gbcast-ci-api34 --package "system-images;android-34;google_apis;x86_64" --device "pixel_2"
+          printf '%s\n' no | "$AVDMANAGER" create avd --force --name gbcast-ci-api34 --package "system-images;android-34;google_apis;x86_64" --device "pixel_2"
           "$AVDMANAGER" list avd
           if [[ ! -f "$ANDROID_AVD_HOME/gbcast-ci-api34.ini" ]]; then
             echo "AVD creation did not produce $ANDROID_AVD_HOME/gbcast-ci-api34.ini"

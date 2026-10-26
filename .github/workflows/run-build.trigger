@@ -75,3 +75,5 @@ Build request: Stabilize Android emulator boot after adb device offline loop 202
 Build request: Replace emulator action with managed AVD and bounded ADB recovery 2026-10-26
 
 Build request: Fix setup-android removed tools package and rerun managed ADB instrumentation 2026-10-26
+
+Build request: Fix sdkmanager licenses pipeline SIGPIPE handling 2026-10-26

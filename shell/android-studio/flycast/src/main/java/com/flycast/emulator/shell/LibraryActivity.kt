@@ -29,7 +29,7 @@ class LibraryActivity : ComponentActivity() {
         enableEdgeToEdge()
         val error = runCatching {
             DreamcastControls.initialize(this)
-            FlycastBridge.start(this)
+            GBCastBridge.start(this)
         }.exceptionOrNull()
         if (error != null) {
             Log.e("GBCastStartup", "Failed to initialize GBCast launcher", error)

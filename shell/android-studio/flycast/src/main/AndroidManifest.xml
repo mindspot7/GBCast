@@ -49,7 +49,7 @@
         android:isGame="true"
 		android:requestLegacyExternalStorage="true"
 		android:allowBackup="true"
-		android:backupAgent="com.flycast.emulator.FlycastBackupAgent"
+		android:backupAgent="com.flycast.emulator.GBCastBackupAgent"
 		android:restoreAnyVersion="true">
 
         <meta-data android:name="android.max_aspect" android:value="2.1" />

@@ -55,7 +55,7 @@ jobs:
           GBCAST_VERSION_CODE: ${{ github.run_number }}
         # CI-only values are passed as Gradle properties; tracked source stays unchanged.
         # APK only. The App Bundle (.aab) is built for an official numbered release, when asked for.
-        run: ./gradlew :flycast:testDebugUnitTest :flycast:compileDebugAndroidTestJavaWithJavac :flycast:assembleRelease --parallel -PgbcastVersionCode="$GBCAST_VERSION_CODE" -PgbcastCiDebugSigning=true
+        run: ./gradlew :gbcast:testDebugUnitTest :gbcast:compileDebugAndroidTestJavaWithJavac :gbcast:assembleRelease --parallel -PgbcastVersionCode="$GBCAST_VERSION_CODE" -PgbcastCiDebugSigning=true
 
       - name: Set up Android SDK for managed emulator
         uses: android-actions/setup-android@v3
@@ -160,7 +160,7 @@ jobs:
 
       - name: Run Android instrumentation tests
         working-directory: shell/android-studio
-        run: ./gradlew --no-daemon :flycast:connectedDebugAndroidTest --stacktrace
+        run: ./gradlew --no-daemon :gbcast:connectedDebugAndroidTest --stacktrace
 
       - name: Stop managed Android emulator
         if: always()

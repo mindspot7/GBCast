@@ -27,13 +27,13 @@ object GBCastCheatsBackend : CheatsBackend {
                     name = JNIdc.cheatDescription(index).orEmpty().ifBlank { "Cheat ${index + 1}" },
                     code = "GameShark",
                     enabled = JNIdc.cheatEnabled(index),
-                    sourceLabel = "Flycast",
+                    sourceLabel = "GBCast",
                 )
             }
         }
 
     override val databaseStatus: String
-        get() = "Flycast GameShark codes for the current game. No external cheat database is configured."
+        get() = "GBCast GameShark codes for the current game. No external cheat database is configured."
 
     override val codeHint: String
         get() = "GameShark code (hex words separated by spaces)"
@@ -50,10 +50,10 @@ object GBCastCheatsBackend : CheatsBackend {
         if (code.isBlank()) return CheatActionResult.failure("Enter a GameShark code.")
         val error: String? = runCatching {
             JNIdc.addGameSharkCheat(name.trim().ifBlank { "Cheat" }, code.trim())
-        }.getOrElse { it.message ?: "Flycast could not parse that code." }
+        }.getOrElse { it.message ?: "GBCast could not parse that code." }
         if (error != null) return CheatActionResult.failure(error)
         revision++
-        return CheatActionResult.success("Cheat added to Flycast.")
+        return CheatActionResult.success("Cheat added to GBCast.")
     }
 
     override fun setEnabled(id: String, enabled: Boolean) {
@@ -78,7 +78,7 @@ object GBCastCheatsBackend : CheatsBackend {
             .toList()
         if (sourceLines.isEmpty()) return CheatActionResult.failure("No GameShark codes were found in that file.")
         if (sourceLines.any { it.startsWith("cheat", ignoreCase = true) && "=" in it }) {
-            return CheatActionResult.failure("Flycast .cht configuration files are not text-code lists. Import a text file with one GameShark code per line; use Name=code to label entries.")
+            return CheatActionResult.failure("GBCast .cht configuration files are not text-code lists. Import a text file with one GameShark code per line; use Name=code to label entries.")
         }
 
         var imported = 0

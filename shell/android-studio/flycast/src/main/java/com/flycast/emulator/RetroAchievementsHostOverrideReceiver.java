@@ -28,7 +28,7 @@ import java.util.List;
  *   No extras required.
  */
 public class RetroAchievementsHostOverrideReceiver extends BroadcastReceiver {
-    private static final String TAG = "flycast/RAHostOverride";
+    private static final String TAG = "GBCast/RAHostOverride";
     static final String ACTION_SET = "com.flycast.emulator.action.SET_RETROACHIEVEMENTS_HOST_OVERRIDE";
     static final String ACTION_CLEAR = "com.flycast.emulator.action.CLEAR_RETROACHIEVEMENTS_HOST_OVERRIDE";
     static final String EXTRA_HOST = "host";
@@ -68,12 +68,12 @@ public class RetroAchievementsHostOverrideReceiver extends BroadcastReceiver {
         }
 
         // Also update the in-memory config so the next game load picks it up immediately
-        // without requiring a full restart of Flycast.
+        // without requiring a full restart of GBCast.
         try {
             nativeSetHostOverride(newHost);
             Log.i(TAG, "Updated in-memory host override via JNI");
         } catch (UnsatisfiedLinkError e) {
-            Log.d(TAG, "Native library not yet loaded; emu.cfg change will take effect on next Flycast start");
+            Log.d(TAG, "Native library not yet loaded; emu.cfg change will take effect on next GBCast start");
         }
     }
 

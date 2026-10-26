@@ -46,9 +46,9 @@ public final class NativeGLActivity extends BaseGLActivity {
         Log.i("flycast", "NativeGLActivity.onCreate");
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         restoreAutoLoadAfterStart = getIntent().getBooleanExtra(
-                com.flycast.emulator.shell.FlycastBridge.EXTRA_RESTORE_AUTO_LOAD, false);
+                com.flycast.emulator.shell.GBCastBridge.EXTRA_RESTORE_AUTO_LOAD, false);
         originalAutoLoadState = getIntent().getBooleanExtra(
-                com.flycast.emulator.shell.FlycastBridge.EXTRA_AUTO_LOAD_VALUE, false);
+                com.flycast.emulator.shell.GBCastBridge.EXTRA_AUTO_LOAD_VALUE, false);
 
         super.onCreate(savedInstanceState);
 

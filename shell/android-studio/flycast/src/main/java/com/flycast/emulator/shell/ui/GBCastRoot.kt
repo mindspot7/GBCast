@@ -21,7 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import com.flycast.emulator.shell.FlycastBridge
+import com.flycast.emulator.shell.GBCastBridge
 import gb.frame.PresetOption
 import gb.frame.PresetPicker
 import gb.frame.SetupWizard
@@ -35,7 +35,7 @@ private enum class Screen { Library, Settings }
 fun GBCastRoot(onQuit: () -> Unit) {
     GBCastTheme {
         val ctx = LocalContext.current
-        var setup by remember { mutableStateOf(FlycastBridge.setupDone(ctx)) }
+        var setup by remember { mutableStateOf(GBCastBridge.setupDone(ctx)) }
         var screen by remember { mutableStateOf(Screen.Library) }
         var settingsPage by remember { mutableStateOf<SettingsPage?>(null) }
         val snackbar = remember { SnackbarHostState() }
@@ -57,18 +57,18 @@ fun GBCastRoot(onQuit: () -> Unit) {
                             ) { uri ->
                                 if (uri != null) {
                                     com.flycast.emulator.shell.Storage.takeFolder(uri)
-                                    FlycastBridge.setGamesDir(ctx, uri.toString())
+                                    GBCastBridge.setGamesDir(ctx, uri.toString())
                                 }
                             }
                             androidx.compose.material3.Button(onClick = { picker.launch(null) }) {
-                                Text(if (FlycastBridge.gamesDir().isBlank()) "Choose games folder" else "Folder selected")
+                                Text(if (GBCastBridge.gamesDir().isBlank()) "Choose games folder" else "Folder selected")
                             }
                         },
                         WizardStep(
                             Icons.Default.SportsEsports,
                             "Performance",
                             listOf(Color(0xFFFFB15A), Color(0xFF8A4B12)),
-                            "These presets write Flycast's renderer, resolution and dynarec options. BIOS files (dc_boot.bin, dc_flash.bin) can be copied later from System.",
+                            "These presets configure GBCast's renderer, resolution and dynamic recompiler. BIOS files (dc_boot.bin, dc_flash.bin) can be copied later from System.",
                         ) {
                             PresetPicker(
                                 listOf(
@@ -81,26 +81,26 @@ fun GBCastRoot(onQuit: () -> Unit) {
                                 preset = chosen
                                 when (chosen) {
                                     0 -> {
-                                        FlycastBridge.setInt("config", "pvr.rend", 0)
-                                        FlycastBridge.setInt("config", "rend.Resolution", 480)
+                                        GBCastBridge.setInt("config", "pvr.rend", 0)
+                                        GBCastBridge.setInt("config", "rend.Resolution", 480)
                                     }
                                     2 -> {
-                                        FlycastBridge.setInt("config", "pvr.rend", 4)
-                                        FlycastBridge.setInt("config", "rend.Resolution", 1440)
+                                        GBCastBridge.setInt("config", "pvr.rend", 4)
+                                        GBCastBridge.setInt("config", "rend.Resolution", 1440)
                                     }
                                     else -> {
-                                        FlycastBridge.setInt("config", "pvr.rend", 0)
-                                        FlycastBridge.setInt("config", "rend.Resolution", 960)
-                                        FlycastBridge.setBool("config", "rend.vsync", true)
-                                        FlycastBridge.setBool("config", "rend.FramePacing", true)
+                                        GBCastBridge.setInt("config", "pvr.rend", 0)
+                                        GBCastBridge.setInt("config", "rend.Resolution", 960)
+                                        GBCastBridge.setBool("config", "rend.vsync", true)
+                                        GBCastBridge.setBool("config", "rend.FramePacing", true)
                                     }
                                 }
-                                FlycastBridge.setBool("config", "Dynarec.Enabled", true)
+                                GBCastBridge.setBool("config", "Dynarec.Enabled", true)
                             }
                         },
                     ),
                     onFinish = {
-                        FlycastBridge.finishSetup(ctx)
+                        GBCastBridge.finishSetup(ctx)
                         setup = true
                     },
                 )
@@ -120,7 +120,7 @@ fun GBCastRoot(onQuit: () -> Unit) {
                                 onQuit = onQuit,
                                 launch = { path, slot, fresh ->
                                     scope.launch {
-                                        FlycastBridge.launch(ctx, path, slot, fresh)?.let { snackbar.showSnackbar(it) }
+                                        GBCastBridge.launch(ctx, path, slot, fresh)?.let { snackbar.showSnackbar(it) }
                                     }
                                 },
                             )

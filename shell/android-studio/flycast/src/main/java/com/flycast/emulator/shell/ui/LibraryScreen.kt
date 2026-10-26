@@ -59,7 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import app.gbcast.emulator.R
-import com.flycast.emulator.shell.FlycastBridge
+import com.flycast.emulator.shell.GBCastBridge
 import com.flycast.emulator.shell.GameIndex
 import com.flycast.emulator.shell.Storage
 import gb.frame.HomeHelpBar
@@ -132,14 +132,14 @@ fun LibraryScreen(
     var loading by remember { mutableStateOf(false) }
     var scanError by remember { mutableStateOf<String?>(null) }
     var refreshKey by remember { mutableIntStateOf(0) }
-    var states by remember { mutableStateOf<List<FlycastBridge.SaveSlot>>(emptyList()) }
+    var states by remember { mutableStateOf<List<GBCastBridge.SaveSlot>>(emptyList()) }
     var coverVersion by remember { mutableIntStateOf(0) }
     LifecycleResumeEffect(Unit) {
         refreshKey++
         onPauseOrDispose { }
     }
-    LaunchedEffect(FlycastBridge.gamesDir(), refreshKey) {
-        val dir = FlycastBridge.gamesDir()
+    LaunchedEffect(GBCastBridge.gamesDir(), refreshKey) {
+        val dir = GBCastBridge.gamesDir()
         if (dir.isBlank()) {
             games = emptyList()
             scanError = null
@@ -160,7 +160,7 @@ fun LibraryScreen(
         loading = false
     }
     LaunchedEffect(games, refreshKey) {
-        states = withContext(Dispatchers.IO) { runCatching { FlycastBridge.states(games) }.getOrDefault(emptyList()) }
+        states = withContext(Dispatchers.IO) { runCatching { GBCastBridge.states(games) }.getOrDefault(emptyList()) }
     }
     val entries = remember(states) {
         states.map { s ->
@@ -212,7 +212,7 @@ fun LibraryScreen(
     )
     val emptyKind = when {
         scanError != null -> EmptyKind.Error
-        FlycastBridge.gamesDir().isBlank() -> EmptyKind.Folder
+        GBCastBridge.gamesDir().isBlank() -> EmptyKind.Folder
         games.isEmpty() -> if (loading) EmptyKind.Loading else EmptyKind.NoGames
         else -> null
     }
@@ -241,7 +241,7 @@ fun LibraryScreen(
         ) {
             if (!fullscreen) {
                 HomeTopBar(
-                    painterResource(R.drawable.ic_launcher),
+                    painterResource(R.drawable.ic_launcher_foreground),
                     "GBCast",
                     onClick = {
                         if (!menuOpen) MenuState.selected = null
@@ -283,7 +283,7 @@ fun LibraryScreen(
             open = menuOpen,
             onDismiss = { menuOpen = false },
             focus = menuFocus,
-            appIcon = painterResource(R.drawable.ic_launcher),
+            appIcon = painterResource(R.drawable.ic_launcher_foreground),
             appName = "GBCast",
             themeLabel = style.label,
             fullscreen = fullscreen,
@@ -340,7 +340,7 @@ private fun EmptyContent(kind: EmptyKind, error: String?, toSystem: () -> Unit) 
     when (kind) {
         EmptyKind.Folder -> EmptyState(Icons.Default.Folder, "Choose your games folder", "GBCast reads Dreamcast and Naomi images through the folder you pick. No broad storage permission is required.", "Choose folder", toSystem)
         EmptyKind.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-        EmptyKind.NoGames -> EmptyState(Icons.Default.SearchOff, "No games found", "Nothing with a Flycast disc extension in ${Storage.folderLabel(FlycastBridge.gamesDir())}.", null, {})
+        EmptyKind.NoGames -> EmptyState(Icons.Default.SearchOff, "No games found", "No GBCast-compatible disc image was found in ${Storage.folderLabel(GBCastBridge.gamesDir())}.", null, {})
         EmptyKind.Error -> EmptyState(Icons.Default.Folder, "Could not read the folder", error ?: "The folder permission may have been revoked.", "Choose folder", toSystem)
     }
 }

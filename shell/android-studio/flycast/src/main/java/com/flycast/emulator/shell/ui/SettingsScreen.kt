@@ -52,7 +52,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gbcast.emulator.R
-import com.flycast.emulator.shell.FlycastBridge
+import com.flycast.emulator.shell.GBCastBridge
 import com.flycast.emulator.shell.Storage
 import gb.frame.AboutCredit
 import gb.frame.AboutPage
@@ -79,14 +79,14 @@ enum class SettingsPage(val label: String, val icon: ImageVector) {
 
 private class Cfg {
     var tick by mutableIntStateOf(0)
-    fun bool(section: String, name: String) = FlycastBridge.bool(section, name)
+    fun bool(section: String, name: String) = GBCastBridge.bool(section, name)
     fun toggle(section: String, name: String) {
-        FlycastBridge.setBool(section, name, !bool(section, name))
+        GBCastBridge.setBool(section, name, !bool(section, name))
         tick++
     }
-    fun int(section: String, name: String) = FlycastBridge.int(section, name)
+    fun int(section: String, name: String) = GBCastBridge.int(section, name)
     fun setInt(section: String, name: String, value: Int) {
-        FlycastBridge.setInt(section, name, value)
+        GBCastBridge.setInt(section, name, value)
         tick++
     }
 }
@@ -110,14 +110,14 @@ fun SettingsScreen(onBack: () -> Unit, toast: (String) -> Unit, page: SettingsPa
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
         if (uri != null) {
             Storage.takeFolder(uri)
-            FlycastBridge.setGamesDir(ctx, uri.toString())
+            GBCastBridge.setGamesDir(ctx, uri.toString())
             toast("Games folder saved")
         }
     }
     val biosPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri != null) {
-            val saved = Storage.importFile(uri, FlycastBridge.dataDir())
-            toast(if (saved != null) "Copied ${File(saved).name} into the Flycast data folder" else "Could not copy that file")
+            val saved = Storage.importFile(uri, GBCastBridge.dataDir())
+            toast(if (saved != null) "Copied ${File(saved).name} into the GBCast data folder" else "Could not copy that file")
         }
     }
 
@@ -166,7 +166,7 @@ fun SettingsScreen(onBack: () -> Unit, toast: (String) -> Unit, page: SettingsPa
                         appName = "GBCast",
                         manufacturer = "Sega",
                         console = "Dreamcast",
-                        icon = painterResource(R.drawable.ic_launcher),
+                        icon = painterResource(R.drawable.ic_launcher_foreground),
                         credits = listOf(
                             AboutCredit("Flycast", "Emulation core for Dreamcast, Naomi, Naomi 2 and Atomiswave."),
                             AboutCredit("GBFrame", "Shared Android interface, settings, controls and menu components."),
@@ -185,7 +185,7 @@ fun SettingsScreen(onBack: () -> Unit, toast: (String) -> Unit, page: SettingsPa
 
 @Composable
 private fun SystemPage(tick: Int, cfg: Cfg, onFolder: () -> Unit, onBios: () -> Unit) {
-    val dir = FlycastBridge.gamesDir()
+    val dir = GBCastBridge.gamesDir()
     SettingsGroup("Paths", Icons.Default.Folder) {
         ActionRow(
             Icons.Default.Folder,
@@ -199,13 +199,13 @@ private fun SystemPage(tick: Int, cfg: Cfg, onFolder: () -> Unit, onBios: () -> 
         ActionRow(
             Icons.Default.Memory,
             "BIOS and data files",
-            if (FlycastBridge.biosPresent()) "dc_boot.bin is in the data folder" else "Copy dc_boot.bin and dc_flash.bin into the data folder",
+            if (GBCastBridge.biosPresent()) "dc_boot.bin is in the data folder" else "Copy dc_boot.bin and dc_flash.bin into the data folder",
             "Copy file",
             onBios,
-            warn = !FlycastBridge.biosPresent(),
+            warn = !GBCastBridge.biosPresent(),
         )
         SettingsDivider()
-        InfoRow("Flycast data folder", FlycastBridge.dataDir().absolutePath)
+        InfoRow("GBCast data folder", GBCastBridge.dataDir().absolutePath)
     }
     val region = indexOf(tick, intArrayOf(0, 1, 2, 3), cfg.int("config", "Dreamcast.Region"))
     val cable = indexOf(tick, intArrayOf(0, 2, 3), cfg.int("config", "Dreamcast.Cable"))
@@ -240,11 +240,11 @@ private fun VideoPage(tick: Int, cfg: Cfg) {
     val resolutionValues = intArrayOf(480, 960, 1440, 1920)
     val resolution = indexOf(tick, resolutionValues, cfg.int("config", "rend.Resolution"))
     SettingsGroup("Rendering", Icons.Default.Tv) {
-        ChoiceRow("Renderer", "OpenGL ES or Vulkan. Per-pixel is Flycast order-independent transparency.", listOf("GLES", "GLES OIT", "Vulkan", "Vulkan OIT"), renderer) {
+        ChoiceRow("Renderer", "OpenGL ES or Vulkan. Per-pixel uses order-independent transparency.", listOf("GLES", "GLES OIT", "Vulkan", "Vulkan OIT"), renderer) {
             cfg.setInt("config", "pvr.rend", rendererValues[it])
         }
         SettingsDivider()
-        ChoiceRow("Internal resolution", "480 is native. Applied by the Flycast renderer.", listOf("Native", "x2", "x3", "x4"), resolution) {
+        ChoiceRow("Internal resolution", "480 is native. Applied by the GBCast renderer.", listOf("Native", "x2", "x3", "x4"), resolution) {
             cfg.setInt("config", "rend.Resolution", resolutionValues[it])
         }
         SettingsDivider()
@@ -334,7 +334,7 @@ private fun ExtrasPage(tick: Int, cfg: Cfg) {
         SettingsDivider()
         ToggleRow(Icons.Default.Wifi, "Battle cable", null, cfg.bool("network", "BattleCable")) { cfg.toggle("network", "BattleCable") }
         SettingsDivider()
-        ToggleRow(Icons.Default.Wifi, "GGPO", "Rollback netplay. The host, delay and chat options stay in Flycast's network screen.", cfg.bool("network", "GGPO")) { cfg.toggle("network", "GGPO") }
+        ToggleRow(Icons.Default.Wifi, "GGPO", "Rollback netplay. Host, delay and chat options are in the advanced network screen.", cfg.bool("network", "GGPO")) { cfg.toggle("network", "GGPO") }
         SettingsDivider()
         ToggleRow(Icons.Default.Info, "Upload crash logs", null, cfg.bool("config", "UploadCrashLogs")) { cfg.toggle("config", "UploadCrashLogs") }
     }

@@ -47,7 +47,7 @@ import java.util.concurrent.TimeUnit;
 public class HttpClient {
     private static HttpClient instance;
     private CloseableHttpClient httpClient;
-    private String userAgent = "Flycast/1.0";
+    private String userAgent = "GBCast/1.0";
 
     static { System.loadLibrary("flycast"); }
 

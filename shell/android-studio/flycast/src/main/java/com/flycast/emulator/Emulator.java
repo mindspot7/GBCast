@@ -115,7 +115,7 @@ public class Emulator extends Application {
             if (wifiManager == null)
                 wifiManager = (WifiManager)Emulator.context.getSystemService(Context.WIFI_SERVICE);
             if (multicastLock == null)
-                multicastLock = wifiManager.createMulticastLock("Flycast");
+                multicastLock = wifiManager.createMulticastLock("GBCast");
             if (multicastLock != null && !multicastLock.isHeld())
                 multicastLock.acquire();
         }

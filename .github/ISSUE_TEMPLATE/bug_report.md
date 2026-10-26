@@ -12,7 +12,7 @@ assignees: ''
 
 Platform / OS / Hardware: 
 
-Flycast version: 
+GBCast version: 
 
 Hardware: 
 

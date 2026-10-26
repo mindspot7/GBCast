@@ -16,7 +16,7 @@ import gb.frame.SaveData
 import java.io.File
 
 /** Coordinates the Compose shell with the Flycast core. One staged disc stays open until the next launch. */
-object FlycastBridge {
+object GBCastBridge {
     const val EXTRA_PATH = "gbcast_game_path"
     const val EXTRA_SLOT = "gbcast_state_slot"
     const val EXTRA_LOAD = "gbcast_load_state"
@@ -131,4 +131,6 @@ object FlycastBridge {
 
     data class SaveSlot(val gamePath: String, val title: String, val slot: Int, val time: Long)
 }
+
+
 

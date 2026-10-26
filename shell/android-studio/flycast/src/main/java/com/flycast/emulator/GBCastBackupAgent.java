@@ -35,8 +35,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class FlycastBackupAgent extends BackupAgentHelper {
-    private static final String TAG = "FlycastBackupAgent";
+public class GBCastBackupAgent extends BackupAgentHelper {
+    private static final String TAG = "GBCastBackupAgent";
 
     // Hacked FileBackupHelper that will restore all files from a backup, not just the files listed in the constructor.
     // It uses a dummy file list during restore containing only the file being currently restored and updated for each file.
@@ -148,3 +148,5 @@ public class FlycastBackupAgent extends BackupAgentHelper {
         return files.toArray(new String[files.size()]);
     }
 }
+
+

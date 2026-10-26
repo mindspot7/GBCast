@@ -42,7 +42,7 @@ jobs:
 
       - name: Run Android Lint
         working-directory: shell/android-studio
-        run: ./gradlew --no-daemon :flycast:lintDebug :gbframe:lintDebug --stacktrace
+        run: ./gradlew --no-daemon :gbcast:lintDebug :gbframe:lintDebug --stacktrace
 
       - name: Upload Lint reports
         if: always()

@@ -405,7 +405,7 @@ object GbcastGameUi {
 
                 gb.frame.QuickMenuItemRow(
                     id = "native-settings", icon = androidx.compose.material.icons.Icons.Default.Tune,
-                    label = "Flycast settings",
+                    label = "Advanced emulator settings",
                 ) { hideForNative(SETTINGS) }
                 gb.frame.QuickMenuItemRow(
                     id = "cheats", icon = androidx.compose.material.icons.Icons.Default.Memory,

@@ -2,9 +2,9 @@ package com.flycast.emulator.shell
 
 /**
  * Pure decision policy for Android Back while the Flycast game UI is active.
- * State IDs mirror GbcastGameUi's native GUI state constants.
  *
- * This only chooses the UI action; native pause/resume remains owned by GbcastGameUi.
+ * Use GbcastGameUi's state constants as the single source of truth; native pause/resume
+ * remains owned by GbcastGameUi.
  */
 internal object GbcastBackPolicy {
     enum class Action {
@@ -16,10 +16,13 @@ internal object GbcastBackPolicy {
     }
 
     fun decide(state: Int): Action = when (state) {
-        9, 6, 7 -> Action.OPEN_NATIVE_SETTINGS // LOADING, VJOY, VJOY_CMD
-        1, 3, 8, 11, 12 -> Action.RETURN_TO_PAUSE_MENU // COMMANDS, SETTINGS, DISK, CHEATS, ACHIEVEMENTS
-        2 -> Action.RESUME_IF_VISIBLE_OR_SHOW // PAUSE
-        4 -> Action.FINISH_ACTIVITY // MAIN
+        GbcastGameUi.LOADING, GbcastGameUi.VJOY, GbcastGameUi.VJOY_CMD ->
+            Action.OPEN_NATIVE_SETTINGS
+        GbcastGameUi.COMMANDS, GbcastGameUi.SETTINGS, GbcastGameUi.DISK,
+        GbcastGameUi.CHEATS, GbcastGameUi.ACHIEVEMENTS ->
+            Action.RETURN_TO_PAUSE_MENU
+        GbcastGameUi.PAUSE -> Action.RESUME_IF_VISIBLE_OR_SHOW
+        GbcastGameUi.MAIN -> Action.FINISH_ACTIVITY
         else -> Action.TOGGLE_PAUSE_AND_SHOW
     }
 }

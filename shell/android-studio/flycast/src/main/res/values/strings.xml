@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="gbcast_error">GBCast Error</string>
+    <string name="gbcast_error" translatable="false">GBCast Error</string>
     <string name="OK">OK</string>
     <string name="storage_error">Storage Error</string>
     <string name="folder_permissions">Can\'t get permissions to access this folder.\nPlease select a different one.</string>

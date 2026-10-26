@@ -51,3 +51,5 @@ Build request: Apply Android 16 KB max-page-size linker option to GBCast native 
 Build request: Fix CMake syntax and validate 16 KB linker option 2026-10-26
 
 Build request: Validate stricter minimum 16 KB ELF alignment gate 2026-10-26
+
+Build request: Validate corrected 16 KB ELF alignment parser 2026-10-26

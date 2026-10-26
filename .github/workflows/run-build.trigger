@@ -33,3 +33,5 @@ Build request: Add pure Back transition policy and unit tests 2026-10-26
 
 Build request: Run Back policy unit tests before APK packaging 2026-10-26
 Build request: Validate debug unit test task and release APK 2026-10-26
+
+Build request: Validate canonical GUI state constants in Back policy and unit tests 2026-10-26

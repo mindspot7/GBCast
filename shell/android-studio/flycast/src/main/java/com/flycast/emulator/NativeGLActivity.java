@@ -81,6 +81,7 @@ public final class NativeGLActivity extends BaseGLActivity {
     @Override
     protected void onDestroy() {
         try {
+            com.flycast.emulator.shell.GbcastGameUi.detach(this);
             if (inputManager != null) inputManager.unregisterInputDeviceListener(gamepadListener);
             restoreAutoLoadSetting();
             super.onDestroy();

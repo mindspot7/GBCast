@@ -24,3 +24,5 @@ Build request: Build GBCast with enlarged launcher icon 2026-10-26
 Build request: Validate raster icon Compose crash fix 2026-10-26
 
 Build request: Validate GBFrame Compose-safe app icon contract and GBCast raster resources 2026-10-26
+
+Build request: Validate updated GBFrame submodule pointer with raster icon fix 2026-10-26

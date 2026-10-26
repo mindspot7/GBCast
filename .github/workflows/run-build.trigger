@@ -65,3 +65,5 @@ Build request: Validate emu.cfg write-failure consistency fix 2026-10-26
 Build request: Enforce local-only RetroAchievements offline proxy and test online flow unaffected 2026-10-26
 
 Build request: Compile SET/CLEAR broadcast persistence instrumentation tests and validate GBCast 2026-10-26
+
+Execute Android emulator instrumentation tests for RetroAchievements SET/CLEAR persistence (2026-10-26)

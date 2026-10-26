@@ -62,6 +62,9 @@ public class RetroAchievementsHostOverrideReceiver extends BroadcastReceiver {
             writeHostUrl(cfgFile, newHost != null ? newHost : "");
         } catch (IOException e) {
             Log.e(TAG, "Failed to update emu.cfg: " + e.getMessage());
+            // Keep persistent and in-memory configuration consistent. If persistence failed,
+            // do not apply an override that would disappear after the next app restart.
+            return;
         }
 
         // Also update the in-memory config so the next game load picks it up immediately

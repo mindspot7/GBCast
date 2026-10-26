@@ -61,3 +61,5 @@ Build request: Verify RetroAchievements proxy URL logging hardening 2026-10-26
 Build request: Add pure-Java RetroAchievements proxy URL validation and JVM tests 2026-10-26
 
 Build request: Validate emu.cfg write-failure consistency fix 2026-10-26
+
+Build request: Enforce local-only RetroAchievements offline proxy and test online flow unaffected 2026-10-26

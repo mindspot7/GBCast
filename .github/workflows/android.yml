@@ -65,7 +65,7 @@ jobs:
           arch: x86_64
           profile: pixel_2
           disable-animations: true
-          script: ./gradlew :flycast:connectedDebugAndroidTest --stacktrace
+          script: cd shell/android-studio && ./gradlew :flycast:connectedDebugAndroidTest --stacktrace
 
       - name: Name APK with app version
         id: apk

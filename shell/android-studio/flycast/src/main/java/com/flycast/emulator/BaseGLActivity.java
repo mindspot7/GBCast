@@ -381,7 +381,7 @@ public abstract class BaseGLActivity extends ComponentActivity implements Activi
     }
 
     @Override
-    @SuppressLint("GestureBackNavigation") // Hardware Back is handled for legacy emulator pages; system Back uses OnBackInvokedDispatcher above.
+    @SuppressLint("GestureBackNavigation") // Preserve legacy hardware/controller Back routing; predictive-Back integration remains a separate compatibility task.
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (event.getRepeatCount() == 0) {
             if (keyCode == KeyEvent.KEYCODE_BUTTON_B && event.getAction() == KeyEvent.ACTION_DOWN)

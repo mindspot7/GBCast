@@ -166,7 +166,7 @@ fun SettingsScreen(onBack: () -> Unit, toast: (String) -> Unit, page: SettingsPa
                         appName = "GBCast",
                         manufacturer = "Sega",
                         console = "Dreamcast",
-                        icon = painterResource(R.mipmap.ic_launcher),
+                        icon = painterResource(R.drawable.ic_launcher),
                         credits = listOf(
                             AboutCredit("Flycast", "Emulation core for Dreamcast, Naomi, Naomi 2 and Atomiswave."),
                             AboutCredit("GBFrame", "Shared Android interface, settings, controls and menu components."),

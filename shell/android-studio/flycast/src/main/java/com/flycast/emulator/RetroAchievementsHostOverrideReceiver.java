@@ -44,7 +44,8 @@ public class RetroAchievementsHostOverrideReceiver extends BroadcastReceiver {
                 Log.w(TAG, "SET broadcast rejected: 'host' must be an absolute HTTP(S) URL without control characters");
                 return;
             }
-            Log.i(TAG, "SET host override: " + newHost);
+            // Do not log the full URL: custom proxy URLs may contain sensitive query parameters.
+            Log.i(TAG, "SET host override requested");
         } else if (ACTION_CLEAR.equals(intent.getAction())) {
             Log.i(TAG, "CLEAR host override");
         } else {
@@ -157,6 +158,6 @@ public class RetroAchievementsHostOverrideReceiver extends BroadcastReceiver {
         }
 
         Log.i(TAG, "Updated HostUrl in " + cfgFile.getAbsolutePath()
-                + " -> " + (hostUrl.isEmpty() ? "(cleared)" : hostUrl));
+                + (hostUrl.isEmpty() ? " (cleared)" : " (set)"));
     }
 }

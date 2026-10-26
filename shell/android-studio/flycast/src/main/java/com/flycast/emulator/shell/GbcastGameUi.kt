@@ -69,7 +69,7 @@ object GbcastGameUi {
 
     @JvmStatic
     fun onAndroidBack(activity: Activity) {
-        when (GbcastBackPolicy.decide(JNIdc.guiState(), visible)) {
+        when (GbcastBackPolicy.decide(JNIdc.guiState())) {
             GbcastBackPolicy.Action.OPEN_NATIVE_SETTINGS -> JNIdc.guiOpenSettings()
             GbcastBackPolicy.Action.RETURN_TO_PAUSE_MENU -> {
                 JNIdc.guiSetState(PAUSE)

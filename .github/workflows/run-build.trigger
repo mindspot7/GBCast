@@ -81,3 +81,5 @@ Build request: Fix sdkmanager licenses pipeline SIGPIPE handling 2026-10-26
 Build request: Fix managed emulator executable path and rerun SET/CLEAR instrumentation 2026-10-26
 
 Build request: Normalize Android SDK and AVD homes for managed emulator instrumentation 2026-10-26
+
+Build request: Grant KVM access for x86_64 managed emulator instrumentation 2026-10-26

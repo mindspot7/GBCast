@@ -64,7 +64,8 @@
             android:screenOrientation="sensorLandscape"
             android:exported="true"
             android:theme="@style/Theme.AppCompat.NoActionBar">
-            <intent-filter>
+            <!-- Intent filter intentionally accepts legacy file/content URIs, not verified web App Links. -->
+            <intent-filter tools:ignore="AppLinkUrlError">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />

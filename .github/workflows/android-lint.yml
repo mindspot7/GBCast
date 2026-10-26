@@ -2,6 +2,14 @@ name: Android Lint (manual)
 
 on:
   workflow_dispatch:
+  push:
+    branches: [android-port]
+    paths:
+      - '.github/workflows/android-lint.yml'
+      - 'shell/android-studio/flycast/src/**'
+      - 'shell/android-studio/flycast/build.gradle.kts'
+      - 'shell/android-studio/gradle/**'
+      - 'libs/gbframe'
 
 permissions:
   contents: read

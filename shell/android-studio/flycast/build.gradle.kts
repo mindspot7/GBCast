@@ -24,7 +24,8 @@ android {
         // GBCast uses its own application ID and matching namespace.
         minSdk = 28
         targetSdk = 36
-        versionCode = 8
+        // CI can supply a unique build number without rewriting this tracked file.
+        versionCode = providers.gradleProperty("gbcastVersionCode").orNull?.toInt() ?: 8
         versionName = gitVersionName()
         vectorDrawables.useSupportLibrary = true
 
@@ -59,7 +60,12 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("release")
+            // CI APKs use the debug key; official releases keep the release signing configuration.
+            signingConfig = if (providers.gradleProperty("gbcastCiDebugSigning").orNull == "true") {
+                signingConfigs.getByName("debug")
+            } else {
+                signingConfigs.getByName("release")
+            }
         }
     }
     compileOptions {

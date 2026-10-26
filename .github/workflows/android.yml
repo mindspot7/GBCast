@@ -160,7 +160,7 @@ jobs:
 
       - name: Run SET/CLEAR receiver instrumentation tests
         working-directory: shell/android-studio
-        run: ./gradlew --no-daemon :flycast:connectedDebugAndroidTest --stacktrace
+        run: ./gradlew --no-daemon :flycast:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.flycast.emulator.RetroAchievementsHostOverrideReceiverTest --stacktrace
 
       - name: Stop managed Android emulator
         if: always()

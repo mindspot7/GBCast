@@ -30,3 +30,5 @@ Build request: Validate updated GBFrame submodule pointer with raster icon fix 2
 Build request: Validate configurable Gradle CI version/signing properties 2026-10-26
 
 Build request: Add pure Back transition policy and unit tests 2026-10-26
+
+Build request: Run Back policy unit tests before APK packaging 2026-10-26

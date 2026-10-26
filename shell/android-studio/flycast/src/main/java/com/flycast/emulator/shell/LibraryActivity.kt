@@ -1,5 +1,6 @@
 package com.flycast.emulator.shell
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.util.Log
 import android.view.InputDevice
@@ -68,6 +69,7 @@ class LibraryActivity : ComponentActivity() {
         finishAndRemoveTask()
     }
 
+    @SuppressLint("RestrictedApi") // ComponentActivity's public override contract requires delegating unhandled keys to super.
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.keyCode == KeyEvent.KEYCODE_BUTTON_B && event.action == KeyEvent.ACTION_DOWN) {
             lastGamepadBAt = event.eventTime

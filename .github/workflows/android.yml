@@ -60,12 +60,18 @@ jobs:
       - name: Run SET/CLEAR receiver instrumentation tests on Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          api-level: 34
           target: google_apis
           arch: x86_64
           profile: pixel_2
+          force-avd-creation: true
+          emulator-boot-timeout: 600
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -wipe-data
           disable-animations: true
-          script: cd shell/android-studio && ./gradlew :flycast:connectedDebugAndroidTest --stacktrace
+          script: |
+            set -euo pipefail
+            cd shell/android-studio
+            ./gradlew --no-daemon :flycast:connectedDebugAndroidTest --stacktrace
 
       - name: Name APK with app version
         id: apk

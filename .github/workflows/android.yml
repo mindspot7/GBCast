@@ -158,9 +158,9 @@ jobs:
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
 
-      - name: Run SET/CLEAR receiver instrumentation tests
+      - name: Run Android instrumentation tests
         working-directory: shell/android-studio
-        run: ./gradlew --no-daemon :flycast:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.flycast.emulator.RetroAchievementsHostOverrideReceiverTest --stacktrace
+        run: ./gradlew --no-daemon :flycast:connectedDebugAndroidTest --stacktrace
 
       - name: Stop managed Android emulator
         if: always()

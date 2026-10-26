@@ -68,6 +68,8 @@ Build request: Compile SET/CLEAR broadcast persistence instrumentation tests and
 
 Execute Android emulator instrumentation tests for RetroAchievements SET/CLEAR persistence (2026-10-26)
 
+Run the complete Android instrumentation suite with a self-contained SAF fixture (2026-10-26)
+
 Correct Android project working directory for emulator instrumentation run
 
 Build request: Stabilize Android emulator boot after adb device offline loop 2026-10-26

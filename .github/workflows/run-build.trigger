@@ -39,3 +39,5 @@ Build request: Validate explicit visibility-aware Back actions after device test
 Build request: Validate GBCast 16 KB APK alignment CI gate 2026-10-26
 Build request: Inspect native ELF 16 KB LOAD alignment in GBCast 2026-10-26
 Build request: Enforce native ELF 16 KB alignment gate 2026-10-26
+
+Build request: Use pinned GBFrame shared 16 KB APK validator in CI 2026-10-26

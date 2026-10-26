@@ -1,0 +1,50 @@
+name: Android Lint (manual)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-lint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Install Android SDK packages
+        run: |
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager --install "platforms;android-36" "build-tools;36.0.0" "ndk;29.0.14206865" "cmake;3.22.1"
+
+      - name: Run Android Lint
+        working-directory: shell/android-studio
+        run: ./gradlew --no-daemon :flycast:lintDebug :gbframe:lintDebug --stacktrace
+
+      - name: Upload Lint reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: gbcast-android-lint-reports
+          path: |
+            shell/android-studio/flycast/build/reports/lint-results-*.html
+            shell/android-studio/flycast/build/reports/lint-results-*.xml
+            libs/gbframe/gbframe/build/reports/lint-results-*.html
+            libs/gbframe/gbframe/build/reports/lint-results-*.xml
+          if-no-files-found: warn
+          retention-days: 14

@@ -41,7 +41,7 @@ public class RetroAchievementsHostOverrideReceiver extends BroadcastReceiver {
         if (ACTION_SET.equals(intent.getAction())) {
             newHost = intent.getStringExtra(EXTRA_HOST);
             if (!RetroAchievementsHostUrlValidator.isValid(newHost)) {
-                Log.w(TAG, "SET broadcast rejected: 'host' must be an absolute HTTP(S) URL without control characters");
+                Log.w(TAG, "SET broadcast rejected: 'host' must be an HTTP(S) URL targeting localhost or loopback");
                 return;
             }
             // Do not log the full URL: custom proxy URLs may contain sensitive query parameters.

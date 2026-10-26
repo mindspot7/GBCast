@@ -2,6 +2,7 @@ package com.flycast.emulator;
 
 import app.gbcast.emulator.R;
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -380,6 +381,7 @@ public abstract class BaseGLActivity extends ComponentActivity implements Activi
     }
 
     @Override
+    @SuppressLint("GestureBackNavigation") // Hardware Back is handled for legacy emulator pages; system Back uses OnBackInvokedDispatcher above.
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (event.getRepeatCount() == 0) {
             if (keyCode == KeyEvent.KEYCODE_BUTTON_B && event.getAction() == KeyEvent.ACTION_DOWN)

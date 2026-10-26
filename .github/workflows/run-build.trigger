@@ -83,3 +83,5 @@ Build request: Fix managed emulator executable path and rerun SET/CLEAR instrume
 Build request: Normalize Android SDK and AVD homes for managed emulator instrumentation 2026-10-26
 
 Build request: Grant KVM access for x86_64 managed emulator instrumentation 2026-10-26
+
+Build request: Filter connected Android instrumentation run to RetroAchievements host override SET/CLEAR tests 2026-10-26

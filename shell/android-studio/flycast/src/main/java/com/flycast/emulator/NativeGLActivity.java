@@ -31,6 +31,8 @@ public final class NativeGLActivity extends BaseGLActivity {
     private boolean mScreenKeyboardShown;
     private boolean restoreAutoLoadAfterStart;
     private boolean originalAutoLoadState;
+    // Resume gameplay if Android backgrounded the activity while the game was running.
+    private boolean resumeGameplayAfterBackground;
     private InputManager inputManager;
     private final InputManager.InputDeviceListener gamepadListener = new InputManager.InputDeviceListener() {
         @Override public void onInputDeviceAdded(int id) { updateTouchControlsVisibility(); }
@@ -62,6 +64,17 @@ public final class NativeGLActivity extends BaseGLActivity {
         DreamcastControls.configureHotkeys();
         wantLoad = getIntent().getBooleanExtra("gbcast_load_state", false);
         Log.i("flycast", "NativeGLActivity.onCreate done");
+    }
+
+    @Override
+    protected void onPause() {
+        // Preserve the pre-background gameplay intent. Do not auto-resume if the quick menu
+        // was already open or Flycast was in another native menu.
+        resumeGameplayAfterBackground =
+                !com.flycast.emulator.shell.GbcastGameUi.getMenuOwnsKeys()
+                && com.flycast.emulator.emu.JNIdc.guiState()
+                == com.flycast.emulator.shell.GbcastGameUi.CLOSED;
+        super.onPause();
     }
 
     @Override
@@ -146,8 +159,20 @@ public final class NativeGLActivity extends BaseGLActivity {
 
     @Override
     protected void doResume() {
-    	if (mView != null)
-	        mView.resume();
+        if (mView == null)
+            return;
+        mView.resume();
+
+        // Android can cause Flycast to enter PAUSE while the activity is backgrounded.
+        // Only undo that transition when gameplay was active before onPause; never toggle
+        // blindly, and leave an intentionally opened pause menu untouched.
+        if (resumeGameplayAfterBackground) {
+            resumeGameplayAfterBackground = false;
+            if (com.flycast.emulator.emu.JNIdc.guiState()
+                    == com.flycast.emulator.shell.GbcastGameUi.PAUSE) {
+                com.flycast.emulator.emu.JNIdc.guiTogglePause();
+            }
+        }
     }
 
     @Override

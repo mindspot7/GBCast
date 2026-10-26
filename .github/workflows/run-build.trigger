@@ -45,3 +45,5 @@ Build request: Use pinned GBFrame shared 16 KB APK validator in CI 2026-10-26
 Build request: Validate shared 16 KB ELF gate across all packaged ABIs 2026-10-26
 
 Build request: Diagnose GBCast all-ABI 16 KB ELF alignment failures 2026-10-26
+
+Build request: Apply Android 16 KB max-page-size linker option to GBCast native targets 2026-10-26

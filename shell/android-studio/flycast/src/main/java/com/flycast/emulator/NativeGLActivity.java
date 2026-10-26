@@ -1,5 +1,6 @@
 package com.flycast.emulator;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.hardware.input.InputManager;
 import android.os.Bundle;
@@ -90,6 +91,7 @@ public final class NativeGLActivity extends BaseGLActivity {
     }
 
     @Override
+    @SuppressLint("RestrictedApi") // Remapped controller events must re-enter the Activity's normal dispatch pipeline.
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (!com.flycast.emulator.shell.GbcastGameUi.getMenuOwnsKeys() &&
                 event.getKeyCode() != KeyEvent.KEYCODE_BACK &&

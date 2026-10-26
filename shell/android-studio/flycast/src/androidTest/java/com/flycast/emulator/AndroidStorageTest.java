@@ -19,6 +19,7 @@ import java.util.Collections;
 public class AndroidStorageTest {
     private static final String TREE_URI =
             "content://app.gbcast.emulator.test.documents/tree/root";
+    private static final String ROOT_DOCUMENT_URI = TREE_URI + "/document/root";
 
     @Test
     public void storageOperationsUseSelfContainedSafFixture() {
@@ -51,7 +52,7 @@ public class AndroidStorageTest {
                     assertEquals("games", directoryInfo.getName());
                     assertTrue(directoryInfo.isDirectory());
                     assertNotEquals(0, directoryInfo.getUpdateTime());
-                    assertEquals(TREE_URI, storage.getParentUri(directory.getPath()));
+                    assertEquals(ROOT_DOCUMENT_URI, storage.getParentUri(directory.getPath()));
 
                     FileInfo[] directoryChildren = storage.listContent(directory.getPath());
                     assertEquals(1, directoryChildren.length);

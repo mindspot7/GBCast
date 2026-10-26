@@ -87,3 +87,4 @@ Build request: Normalize Android SDK and AVD homes for managed emulator instrume
 Build request: Grant KVM access for x86_64 managed emulator instrumentation 2026-10-26
 
 Build request: Filter connected Android instrumentation run to RetroAchievements host override SET/CLEAR tests 2026-10-26
+Build request: Validate self-contained SAF tests and supported Android ABIs 2026-10-26

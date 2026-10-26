@@ -54,7 +54,13 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Physical development devices use arm64; CI keeps x86_64 for its emulator.
+            ndk.abiFilters += listOf("arm64-v8a", "x86_64")
+        }
         release {
+            // GBCast targets modern 64-bit Android hardware only.
+            ndk.abiFilters += "arm64-v8a"
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

@@ -65,7 +65,11 @@ jobs:
       - name: Install emulator system image
         run: |
           set -euo pipefail
+          # `yes` may exit with SIGPIPE after sdkmanager has accepted all licenses;
+          # do not let pipefail treat that expected early close as a setup failure.
+          set +o pipefail
           yes | sdkmanager --licenses >/dev/null
+          set -o pipefail
           sdkmanager "platform-tools" "platforms;android-34" "system-images;android-34;google_apis;x86_64" "emulator"
 
       - name: Boot managed Android emulator with bounded ADB recovery

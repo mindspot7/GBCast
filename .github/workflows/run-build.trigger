@@ -79,3 +79,5 @@ Build request: Fix setup-android removed tools package and rerun managed ADB ins
 Build request: Fix sdkmanager licenses pipeline SIGPIPE handling 2026-10-26
 
 Build request: Fix managed emulator executable path and rerun SET/CLEAR instrumentation 2026-10-26
+
+Build request: Normalize Android SDK and AVD homes for managed emulator instrumentation 2026-10-26

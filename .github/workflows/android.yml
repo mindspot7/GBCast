@@ -76,8 +76,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # sdkmanager installs the emulator under ANDROID_HOME/emulator, which is
+          # not guaranteed to be on PATH in this runner image.
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          export ANDROID_HOME="$SDK_ROOT"
+          export ANDROID_SDK_ROOT="$SDK_ROOT"
+          export PATH="$SDK_ROOT/emulator:$SDK_ROOT/platform-tools:$PATH"
+          if [[ ! -x "$SDK_ROOT/emulator/emulator" ]]; then
+            echo "Android emulator binary is missing under $SDK_ROOT"
+            find "$SDK_ROOT" -maxdepth 4 -type f -name emulator -print || true
+            exit 1
+          fi
           echo "no" | avdmanager create avd --force --name gbcast-ci-api34 --package "system-images;android-34;google_apis;x86_64" --device "pixel_2"
-          emulator -avd gbcast-ci-api34 -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -wipe-data > "$RUNNER_TEMP/gbcast-emulator.log" 2>&1 &
+          "$SDK_ROOT/emulator/emulator" -avd gbcast-ci-api34 -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -wipe-data > "$RUNNER_TEMP/gbcast-emulator.log" 2>&1 &
           EMULATOR_PID=$!
           echo "$EMULATOR_PID" > "$RUNNER_TEMP/gbcast-emulator.pid"
           adb start-server

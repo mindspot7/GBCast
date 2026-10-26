@@ -76,18 +76,32 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # sdkmanager installs the emulator under ANDROID_HOME/emulator, which is
-          # not guaranteed to be on PATH in this runner image.
-          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          # Resolve the SDK from the actual sdkmanager location. The runner's
+          # inherited ANDROID_HOME can point at /usr/local/lib instead of the SDK root.
+          SDKMANAGER_PATH="$(readlink -f "$(command -v sdkmanager)")"
+          SDKMANAGER_DIR="$(dirname "$SDKMANAGER_PATH")"
+          SDK_ROOT="$(cd "$SDKMANAGER_DIR/../../.." && pwd)"
           export ANDROID_HOME="$SDK_ROOT"
           export ANDROID_SDK_ROOT="$SDK_ROOT"
-          export PATH="$SDK_ROOT/emulator:$SDK_ROOT/platform-tools:$PATH"
-          if [[ ! -x "$SDK_ROOT/emulator/emulator" ]]; then
-            echo "Android emulator binary is missing under $SDK_ROOT"
-            find "$SDK_ROOT" -maxdepth 4 -type f -name emulator -print || true
+          export ANDROID_USER_HOME="$HOME/.android"
+          export ANDROID_AVD_HOME="$ANDROID_USER_HOME/avd"
+          mkdir -p "$ANDROID_AVD_HOME"
+          export PATH="$SDK_ROOT/emulator:$SDK_ROOT/platform-tools:$SDKMANAGER_DIR:$PATH"
+          AVDMANAGER="$SDKMANAGER_DIR/avdmanager"
+          if [[ ! -x "$SDK_ROOT/emulator/emulator" || ! -x "$AVDMANAGER" ]]; then
+            echo "Android emulator or avdmanager binary is missing under SDK root $SDK_ROOT"
+            find "$SDK_ROOT" -maxdepth 5 \( -type f -o -type l \) \( -name emulator -o -name avdmanager \) -print || true
             exit 1
           fi
-          echo "no" | avdmanager create avd --force --name gbcast-ci-api34 --package "system-images;android-34;google_apis;x86_64" --device "pixel_2"
+          echo "Resolved Android SDK root: $SDK_ROOT"
+          echo "AVD home: $ANDROID_AVD_HOME"
+          printf "no\\n" | "$AVDMANAGER" create avd --force --name gbcast-ci-api34 --package "system-images;android-34;google_apis;x86_64" --device "pixel_2"
+          "$AVDMANAGER" list avd
+          if [[ ! -f "$ANDROID_AVD_HOME/gbcast-ci-api34.ini" ]]; then
+            echo "AVD creation did not produce $ANDROID_AVD_HOME/gbcast-ci-api34.ini"
+            find "$ANDROID_USER_HOME" -maxdepth 4 -type f -name "*.ini" -print || true
+            exit 1
+          fi
           "$SDK_ROOT/emulator/emulator" -avd gbcast-ci-api34 -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -wipe-data > "$RUNNER_TEMP/gbcast-emulator.log" 2>&1 &
           EMULATOR_PID=$!
           echo "$EMULATOR_PID" > "$RUNNER_TEMP/gbcast-emulator.pid"

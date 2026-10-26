@@ -76,6 +76,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Hosted Linux runners may expose /dev/kvm without granting the runner
+          # account access. This is an ephemeral CI VM; make KVM accessible here.
+          if [[ -e /dev/kvm ]]; then
+            echo "KVM permissions before adjustment:"
+            ls -l /dev/kvm
+            id
+            sudo chmod 666 /dev/kvm
+            echo "KVM permissions after adjustment:"
+            ls -l /dev/kvm
+            if [[ ! -r /dev/kvm || ! -w /dev/kvm ]]; then
+              echo "The runner still cannot read/write /dev/kvm after permission adjustment."
+              exit 1
+            fi
+          else
+            echo "No /dev/kvm device is exposed by this runner; x86_64 emulator startup may fail."
+            exit 1
+          fi
           # Resolve the SDK from the actual sdkmanager location. The runner's
           # inherited ANDROID_HOME can point at /usr/local/lib instead of the SDK root.
           SDKMANAGER_PATH="$(readlink -f "$(command -v sdkmanager)")"
@@ -102,7 +119,7 @@ jobs:
             find "$ANDROID_USER_HOME" -maxdepth 4 -type f -name "*.ini" -print || true
             exit 1
           fi
-          "$SDK_ROOT/emulator/emulator" -avd gbcast-ci-api34 -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -wipe-data > "$RUNNER_TEMP/gbcast-emulator.log" 2>&1 &
+          "$SDK_ROOT/emulator/emulator" -avd gbcast-ci-api34 -accel on -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -wipe-data > "$RUNNER_TEMP/gbcast-emulator.log" 2>&1 &
           EMULATOR_PID=$!
           echo "$EMULATOR_PID" > "$RUNNER_TEMP/gbcast-emulator.pid"
           adb start-server

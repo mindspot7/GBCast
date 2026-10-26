@@ -45,10 +45,12 @@ object GbcastGameUi {
     private var visible by mutableStateOf(false)
     private var compose: ComposeView? = null
     private var glView: View? = null
+    private var attachedActivity: Activity? = null
     private var message by mutableStateOf<String?>(null)
 
     @JvmStatic
     fun attach(activity: Activity, layout: ViewGroup, gameView: View) {
+        attachedActivity = activity
         glView = gameView
         Storage.start(activity)
         val view = ComposeView(activity).apply {
@@ -60,6 +62,20 @@ object GbcastGameUi {
         }
         compose = view
         layout.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+    }
+
+    /**
+     * Release static references to the game Activity and its Views when the session is destroyed.
+     * ComposeView's lifecycle strategy disposes its composition; this clears the process-wide owner.
+     */
+    @JvmStatic
+    fun detach(activity: Activity) {
+        if (attachedActivity !== activity) return
+        visible = false
+        menuOwnsKeys = false
+        compose = null
+        glView = null
+        attachedActivity = null
     }
 
     @JvmStatic

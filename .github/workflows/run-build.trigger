@@ -19,3 +19,4 @@ Build request: fix launch callback arity and apply GBFrame majority box-art aspe
 Build request: Hide Dreamcast touch controls when physical controller is connected 2026-10-25
 Build request: Apply Dreamcast Graphite theme C 2026-10-25
 Build request: Validate GBFrame icon outline rollback 2026-10-25
+Build request: Build GBCast with enlarged launcher icon 2026-10-26

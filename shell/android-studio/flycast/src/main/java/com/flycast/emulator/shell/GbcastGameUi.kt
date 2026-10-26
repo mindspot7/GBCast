@@ -69,15 +69,16 @@ object GbcastGameUi {
 
     @JvmStatic
     fun onAndroidBack(activity: Activity) {
-        when (JNIdc.guiState()) {
-            LOADING, VJOY, VJOY_CMD -> JNIdc.guiOpenSettings()
-            COMMANDS, SETTINGS, DISK, CHEATS, ACHIEVEMENTS -> {
+        when (GbcastBackPolicy.decide(JNIdc.guiState(), visible)) {
+            GbcastBackPolicy.Action.OPEN_NATIVE_SETTINGS -> JNIdc.guiOpenSettings()
+            GbcastBackPolicy.Action.RETURN_TO_PAUSE_MENU -> {
                 JNIdc.guiSetState(PAUSE)
                 show()
             }
-            PAUSE -> if (visible) resume() else show()
-            MAIN -> activity.finish()
-            else -> {
+            GbcastBackPolicy.Action.RESUME_IF_VISIBLE_OR_SHOW ->
+                if (visible) resume() else show()
+            GbcastBackPolicy.Action.FINISH_ACTIVITY -> activity.finish()
+            GbcastBackPolicy.Action.TOGGLE_PAUSE_AND_SHOW -> {
                 JNIdc.guiTogglePause()
                 show()
             }

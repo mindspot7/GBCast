@@ -41,3 +41,5 @@ Build request: Inspect native ELF 16 KB LOAD alignment in GBCast 2026-10-26
 Build request: Enforce native ELF 16 KB alignment gate 2026-10-26
 
 Build request: Use pinned GBFrame shared 16 KB APK validator in CI 2026-10-26
+
+Build request: Validate shared 16 KB ELF gate across all packaged ABIs 2026-10-26

@@ -57,21 +57,74 @@ jobs:
         # APK only. The App Bundle (.aab) is built for an official numbered release, when asked for.
         run: ./gradlew :flycast:testDebugUnitTest :flycast:compileDebugAndroidTestJavaWithJavac :flycast:assembleRelease --parallel -PgbcastVersionCode="$GBCAST_VERSION_CODE" -PgbcastCiDebugSigning=true
 
-      - name: Run SET/CLEAR receiver instrumentation tests on Android emulator
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 34
-          target: google_apis
-          arch: x86_64
-          profile: pixel_2
-          force-avd-creation: true
-          emulator-boot-timeout: 600
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -wipe-data
-          disable-animations: true
-          script: |
-            set -euo pipefail
-            cd shell/android-studio
-            ./gradlew --no-daemon :flycast:connectedDebugAndroidTest --stacktrace
+      - name: Set up Android SDK for managed emulator
+        uses: android-actions/setup-android@v3
+
+      - name: Install emulator system image
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null
+          sdkmanager "platform-tools" "platforms;android-34" "system-images;android-34;google_apis;x86_64" "emulator"
+
+      - name: Boot managed Android emulator with bounded ADB recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "no" | avdmanager create avd --force --name gbcast-ci-api34 --package "system-images;android-34;google_apis;x86_64" --device "pixel_2"
+          emulator -avd gbcast-ci-api34 -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -wipe-data > "$RUNNER_TEMP/gbcast-emulator.log" 2>&1 &
+          EMULATOR_PID=$!
+          echo "$EMULATOR_PID" > "$RUNNER_TEMP/gbcast-emulator.pid"
+          adb start-server
+          deadline=$((SECONDS + 360))
+          connected=false
+          while (( SECONDS < deadline )); do
+            if ! kill -0 "$EMULATOR_PID" 2>/dev/null; then
+              echo "Emulator process exited before ADB connected."
+              cat "$RUNNER_TEMP/gbcast-emulator.log"
+              exit 1
+            fi
+            if adb devices | grep -Eq '^emulator-[0-9]+[[:space:]]+device$'; then
+              connected=true
+              break
+            fi
+            adb reconnect offline >/dev/null 2>&1 || true
+            sleep 5
+          done
+          if [[ "$connected" != true ]]; then
+            echo "Timed out after 6 minutes waiting for an online ADB device."
+            adb devices -l || true
+            cat "$RUNNER_TEMP/gbcast-emulator.log"
+            exit 1
+          fi
+          boot_deadline=$((SECONDS + 180))
+          until [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == "1" ]]; do
+            if (( SECONDS >= boot_deadline )); then
+              echo "Timed out waiting for Android boot completion."
+              adb devices -l || true
+              cat "$RUNNER_TEMP/gbcast-emulator.log"
+              exit 1
+            fi
+            sleep 3
+          done
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
+
+      - name: Run SET/CLEAR receiver instrumentation tests
+        working-directory: shell/android-studio
+        run: ./gradlew --no-daemon :flycast:connectedDebugAndroidTest --stacktrace
+
+      - name: Stop managed Android emulator
+        if: always()
+        shell: bash
+        run: |
+          adb emu kill >/dev/null 2>&1 || true
+          if [[ -f "$RUNNER_TEMP/gbcast-emulator.pid" ]]; then
+            kill "$(cat "$RUNNER_TEMP/gbcast-emulator.pid")" >/dev/null 2>&1 || true
+          fi
+          if [[ -f "$RUNNER_TEMP/gbcast-emulator.log" ]]; then
+            tail -n 200 "$RUNNER_TEMP/gbcast-emulator.log"
+          fi
 
       - name: Name APK with app version
         id: apk

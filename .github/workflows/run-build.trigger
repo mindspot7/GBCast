@@ -38,3 +38,4 @@ Build request: Validate canonical GUI state constants in Back policy and unit te
 Build request: Validate explicit visibility-aware Back actions after device test confirmation 2026-10-26
 Build request: Validate GBCast 16 KB APK alignment CI gate 2026-10-26
 Build request: Inspect native ELF 16 KB LOAD alignment in GBCast 2026-10-26
+Build request: Enforce native ELF 16 KB alignment gate 2026-10-26

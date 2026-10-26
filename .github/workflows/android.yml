@@ -1,4 +1,4 @@
-name: Android
+name: Android # 16 KB validator parsing fix
 # Builds the GBCast release APK from the Flycast core and the GBFrame submodule.
 # Run manually or by committing the dedicated trigger file, only after GBFrame passes.
 

@@ -48,14 +48,14 @@ import static android.view.WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATIO
 import static android.view.WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS;
 
 public abstract class BaseGLActivity extends ComponentActivity implements ActivityCompat.OnRequestPermissionsResultCallback {
-    private static final int STORAGE_PERM_REQUEST = 1001;
     private static final int AUDIO_PERM_REQUEST = 1002;
 
     protected SharedPreferences prefs;
     private AudioBackend audioBackend;
     protected Handler handler = new Handler();
     private boolean audioPermissionRequested = false;
-    private boolean storagePermissionGranted = false;
+    // GBCast uses app-private storage and SAF grants; broad external-storage permission is never required.
+    private boolean storagePermissionGranted = true;
     private boolean paused = true;
     private boolean resumedCalled = false;
     private String pendingIntentUrl;
@@ -110,27 +110,6 @@ public abstract class BaseGLActivity extends ComponentActivity implements Activi
         app.getConfigurationPrefs();
         storage = new AndroidStorage(this);
         setStorageDirectories();
-
-        boolean externalStorageLegacy = true;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            externalStorageLegacy = Environment.isExternalStorageLegacy();
-            //Log.i("flycast", "External storage legacy: " + (externalStorageLegacy ? "preserved" : "lost"));
-        }
-        if (!storagePermissionGranted) {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || !externalStorageLegacy)
-                // No permission needed before Android 6
-                // Permissions only needed in legacy external storage mode
-                storagePermissionGranted = true;
-            else {
-                Log.i("flycast", "Asking for external storage permission");
-                ActivityCompat.requestPermissions(this,
-                        new String[]{
-                                Manifest.permission.READ_EXTERNAL_STORAGE,
-                                Manifest.permission.WRITE_EXTERNAL_STORAGE
-                        },
-                        STORAGE_PERM_REQUEST);
-            }
-        }
 
         Log.i("flycast", "Initializing input devices");
         InputDeviceManager.getInstance().startListening(getApplicationContext());
@@ -461,20 +440,6 @@ public abstract class BaseGLActivity extends ComponentActivity implements Activi
             SipEmulator sip = new SipEmulator();
             JNIdc.setupMic(sip);
         }
-        else if (requestCode == STORAGE_PERM_REQUEST) {
-            Log.i("flycast", "External storage permission granted");
-            storagePermissionGranted = true;
-            setStorageDirectories();
-            if (pendingIntentUrl != null) {
-                JNIdc.setGameUri(pendingIntentUrl);
-                pendingIntentUrl = null;
-            }
-
-            //setup mic
-            if (InputDeviceManager.isMicPluggedIn())
-                requestRecordAudioPermission();
-        }
-
     }
 
     private String getDefaultHomeDir() {

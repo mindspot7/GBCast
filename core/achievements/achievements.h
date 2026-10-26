@@ -16,6 +16,7 @@
 */
 #pragma once
 #include "types.h"
+#include <functional>
 #include <future>
 #include <vector>
 
@@ -78,6 +79,13 @@ Game getCurrentGame();
 std::vector<Achievement> getAchievementList();
 bool canPause();
 void setHostOverride(const std::string& host);
+
+// Optional platform transport. Android uses this to route rcheevos through GBFrame's
+// offline-aware HTTP layer; other platforms keep the native HTTP implementation.
+using HttpResponse = std::function<void(int status, std::vector<u8> body)>;
+using HttpRequestHandler = std::function<bool(const std::string& url, const std::string* postData,
+		const std::string* contentType, HttpResponse response)>;
+void setHttpRequestHandler(HttpRequestHandler handler);
 
 #else
 

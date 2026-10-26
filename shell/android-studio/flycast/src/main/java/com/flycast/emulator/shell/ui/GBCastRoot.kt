@@ -22,8 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import com.flycast.emulator.shell.GBCastBridge
-import gb.frame.PresetOption
-import gb.frame.PresetPicker
 import gb.frame.SetupWizard
 import gb.frame.WizardStep
 import gb.frame.MenuState
@@ -40,7 +38,10 @@ fun GBCastRoot(onQuit: () -> Unit) {
         var settingsPage by remember { mutableStateOf<SettingsPage?>(null) }
         val snackbar = remember { SnackbarHostState() }
         val scope = rememberCoroutineScope()
-        var preset by remember { mutableStateOf(1) }
+        var recommendation by remember { mutableStateOf("Detecting this device…") }
+        androidx.compose.runtime.LaunchedEffect(setup) {
+            if (!setup) recommendation = GBCastBridge.applyRecommendedPreset()
+        }
 
         Surface(Modifier.fillMaxSize(), color = androidx.compose.material3.MaterialTheme.colorScheme.background) {
             if (!setup) {
@@ -68,35 +69,9 @@ fun GBCastRoot(onQuit: () -> Unit) {
                             Icons.Default.SportsEsports,
                             "Performance",
                             listOf(Color(0xFFFFB15A), Color(0xFF8A4B12)),
-                            "These presets configure GBCast's renderer, resolution and dynamic recompiler. BIOS files (dc_boot.bin, dc_flash.bin) can be copied later from System.",
+                            "GBCast chooses a recommended renderer and resolution from the device class. You can change every option later in Performance. BIOS files can be copied from System.",
                         ) {
-                            PresetPicker(
-                                listOf(
-                                    PresetOption("Compatible", "GLES, native resolution, dynarec on"),
-                                    PresetOption("Balanced", "GLES, 2x resolution, vsync and frame pacing"),
-                                    PresetOption("Quality", "Vulkan, 3x resolution"),
-                                ),
-                                preset,
-                            ) { chosen ->
-                                preset = chosen
-                                when (chosen) {
-                                    0 -> {
-                                        GBCastBridge.setInt("config", "pvr.rend", 0)
-                                        GBCastBridge.setInt("config", "rend.Resolution", 480)
-                                    }
-                                    2 -> {
-                                        GBCastBridge.setInt("config", "pvr.rend", 4)
-                                        GBCastBridge.setInt("config", "rend.Resolution", 1440)
-                                    }
-                                    else -> {
-                                        GBCastBridge.setInt("config", "pvr.rend", 0)
-                                        GBCastBridge.setInt("config", "rend.Resolution", 960)
-                                        GBCastBridge.setBool("config", "rend.vsync", true)
-                                        GBCastBridge.setBool("config", "rend.FramePacing", true)
-                                    }
-                                }
-                                GBCastBridge.setBool("config", "Dynarec.Enabled", true)
-                            }
+                            Text(recommendation)
                         },
                     ),
                     onFinish = {
@@ -118,11 +93,8 @@ fun GBCastRoot(onQuit: () -> Unit) {
                             Screen.Library -> LibraryScreen(
                                 onOpenSettings = { settingsPage = it; screen = Screen.Settings },
                                 onQuit = onQuit,
-                                launch = { path, slot, fresh ->
-                                    scope.launch {
-                                        GBCastBridge.launch(ctx, path, slot, fresh)?.let { snackbar.showSnackbar(it) }
-                                    }
-                                },
+                                launch = { path, slot, fresh -> GBCastBridge.launch(ctx, path, slot, fresh) },
+                                onLaunchError = { message -> scope.launch { snackbar.showSnackbar(message) } },
                             )
                             Screen.Settings -> SettingsScreen(
                                 onBack = {

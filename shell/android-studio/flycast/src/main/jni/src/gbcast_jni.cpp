@@ -7,14 +7,84 @@
 #include "imgread/common.h"
 #include "stdclass.h"
 #include "ui/gui.h"
+#include "jni_util.h"
 
+#include <atomic>
 #include <climits>
+#include <mutex>
 #include <string>
 #include <sstream>
+#include <unordered_map>
 
 // GBCast reads and writes Flycast's real config::Option objects. Unknown keys are ignored.
 
 namespace {
+
+#ifdef USE_RACHIEVEMENTS
+static std::atomic_int raHttpNextId { 1 };
+static std::mutex raHttpMutex;
+static std::unordered_map<int, achievements::HttpResponse> raHttpPending;
+static jclass raBridgeClass;
+static jmethodID raHttpMethod;
+static std::string raUserAgent;
+
+static jstring nullableJString(JNIEnv *env, const std::string *value) {
+	return value != nullptr ? env->NewStringUTF(value->c_str()) : nullptr;
+}
+
+static bool dispatchRaHttp(const std::string& url, const std::string *postData,
+		const std::string *contentType, achievements::HttpResponse response) {
+	JNIEnv *env = jni::env();
+	if (env == nullptr || raBridgeClass == nullptr || raHttpMethod == nullptr)
+		return false;
+
+	const int id = raHttpNextId.fetch_add(1);
+	{
+		std::lock_guard<std::mutex> lock(raHttpMutex);
+		raHttpPending.emplace(id, std::move(response));
+	}
+	jstring jurl = env->NewStringUTF(url.c_str());
+	jstring jpost = nullableJString(env, postData);
+	jstring jcontentType = nullableJString(env, contentType);
+	jstring jagent = env->NewStringUTF(raUserAgent.c_str());
+	env->CallStaticVoidMethod(raBridgeClass, raHttpMethod, id, jurl, jpost, jcontentType, jagent);
+	env->DeleteLocalRef(jurl);
+	if (jpost != nullptr)
+		env->DeleteLocalRef(jpost);
+	if (jcontentType != nullptr)
+		env->DeleteLocalRef(jcontentType);
+	env->DeleteLocalRef(jagent);
+	if (!env->ExceptionCheck())
+		return true;
+
+	env->ExceptionClear();
+	std::lock_guard<std::mutex> lock(raHttpMutex);
+	raHttpPending.erase(id);
+	return false;
+}
+
+static bool installRaHttpBridge(JNIEnv *env, const std::string& userAgent) {
+	raUserAgent = userAgent;
+	if (raBridgeClass == nullptr) {
+		jclass localClass = env->FindClass("com/flycast/emulator/emu/JNIdc");
+		if (localClass == nullptr)
+			return false;
+		raBridgeClass = static_cast<jclass>(env->NewGlobalRef(localClass));
+		env->DeleteLocalRef(localClass);
+	}
+	if (raHttpMethod == nullptr)
+		raHttpMethod = env->GetStaticMethodID(raBridgeClass, "raHttp",
+				"(ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
+	if (env->ExceptionCheck()) {
+		env->ExceptionClear();
+		raHttpMethod = nullptr;
+	}
+	if (raHttpMethod == nullptr)
+		return false;
+	achievements::setHttpRequestHandler(dispatchRaHttp);
+	return true;
+}
+#endif
 
 struct BoolOpt {
 	const char *section;
@@ -363,8 +433,31 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_addGame
 }
 
 #ifdef USE_RACHIEVEMENTS
-extern "C" JNIEXPORT jboolean JNICALL Java_com_flycast_emulator_emu_JNIdc_raInit(JNIEnv *, jclass) {
+extern "C" JNIEXPORT jboolean JNICALL Java_com_flycast_emulator_emu_JNIdc_raInit(JNIEnv *env, jclass, jstring userAgent) {
+	if (!installRaHttpBridge(env, jstr(env, userAgent)))
+		achievements::setHttpRequestHandler({});
 	return achievements::init() ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_raHttpResponse(
+		JNIEnv *env, jclass, jint id, jint status, jbyteArray body) {
+	achievements::HttpResponse response;
+	{
+		std::lock_guard<std::mutex> lock(raHttpMutex);
+		auto it = raHttpPending.find(id);
+		if (it == raHttpPending.end())
+			return;
+		response = std::move(it->second);
+		raHttpPending.erase(it);
+	}
+	std::vector<u8> bytes;
+	if (body != nullptr) {
+		const jsize size = env->GetArrayLength(body);
+		bytes.resize(size);
+		if (size > 0)
+			env->GetByteArrayRegion(body, 0, size, reinterpret_cast<jbyte *>(bytes.data()));
+	}
+	response(status, std::move(bytes));
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_raLogin(JNIEnv *env, jclass, jstring username, jstring password) {
@@ -441,7 +534,8 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_raAchie
 	return env->NewStringUTF(out.str().c_str());
 }
 #else
-extern "C" JNIEXPORT jboolean JNICALL Java_com_flycast_emulator_emu_JNIdc_raInit(JNIEnv *, jclass) { return JNI_FALSE; }
+extern "C" JNIEXPORT jboolean JNICALL Java_com_flycast_emulator_emu_JNIdc_raInit(JNIEnv *, jclass, jstring) { return JNI_FALSE; }
+extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_raHttpResponse(JNIEnv *, jclass, jint, jint, jbyteArray) {}
 extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_raLogin(JNIEnv *, jclass, jstring, jstring) {}
 extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_raLoginWithToken(JNIEnv *, jclass, jstring, jstring) {}
 extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_raLogout(JNIEnv *, jclass) {}

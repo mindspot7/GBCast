@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
@@ -73,9 +74,12 @@ import gb.frame.HomeMenuPanel
 import gb.frame.HomeTheme
 import gb.frame.HomeTopBar
 import gb.frame.LibraryBack
+import gb.frame.LibraryView
+import gb.frame.LaunchLoadingOverlay
 import gb.frame.MenuState
 import gb.frame.MenuIcon
 import gb.frame.PlayTime
+import gb.frame.RaUserHeader
 import gb.frame.ResumeEntry
 import gb.frame.formatPlayTime
 import gb.frame.palette
@@ -89,12 +93,14 @@ import kotlinx.coroutines.withContext
 fun LibraryScreen(
     onOpenSettings: (SettingsPage) -> Unit,
     onQuit: () -> Unit,
-    launch: (String, Int, Boolean) -> Unit,
+    launch: suspend (String, Int, Boolean) -> String?,
+    onLaunchError: (String) -> Unit,
 ) {
     var menuOpen by MenuState.open
     val style by HomeTheme.style
     val fullscreen by HomeTheme.fullscreen
     val menuFocus = remember { FocusRequester() }
+    val scope = rememberCoroutineScope()
     val hasPad = rememberHasGamepad()
     val composeView = LocalView.current
     suspend fun focusMenu() {
@@ -134,6 +140,7 @@ fun LibraryScreen(
     var refreshKey by remember { mutableIntStateOf(0) }
     var states by remember { mutableStateOf<List<GBCastBridge.SaveSlot>>(emptyList()) }
     var coverVersion by remember { mutableIntStateOf(0) }
+    var openingGame by remember { mutableStateOf(false) }
     LifecycleResumeEffect(Unit) {
         refreshKey++
         onPauseOrDispose { }
@@ -167,7 +174,7 @@ fun LibraryScreen(
             ResumeEntry(
                 s.gamePath + "#" + s.slot,
                 s.title,
-                if (s.slot == 0) "Slot 1" else "Slot ${s.slot + 1}",
+                if (s.slot == GBCastBridge.AUTO_SAVE_SLOT) "Auto save" else "Slot ${s.slot + 1}",
                 s.time,
                 null,
                 game = s.gamePath,
@@ -200,13 +207,24 @@ fun LibraryScreen(
         MenuState.menuHasFocus = false
         onOpenSettings(it)
     }
+    fun showLaunchLoading(path: String, slot: Int, fresh: Boolean) {
+        if (openingGame) return
+        openingGame = true
+        LibraryView.lastGame = path
+        MenuState.selected = null
+        scope.launch {
+            val error = launch(path, slot, fresh)
+            openingGame = false
+            if (error != null) onLaunchError(error)
+        }
+    }
     val actions = HomeActions(
-        play = { launch(it.key, -1, false) },
-        fresh = { launch(it.key, -1, true) },
+        play = { showLaunchLoading(it.key, -1, false) },
+        fresh = { showLaunchLoading(it.key, -1, true) },
         options = { gameMenu = it },
         resume = { entry ->
             val slot = entry.key.substringAfterLast('#').toIntOrNull() ?: 0
-            launch(entry.game, slot, false)
+            showLaunchLoading(entry.game, slot, false)
         },
         openMenu = { menuOpen = true },
     )
@@ -222,6 +240,7 @@ fun LibraryScreen(
 
     Box(
         Modifier.fillMaxSize().background(palette.backgroundBrush).onFocusChanged { MenuState.hasFocus = it.hasFocus }.onPreviewKeyEvent { e ->
+            if (openingGame) return@onPreviewKeyEvent true
             if (!confirmQuit) return@onPreviewKeyEvent false
             val up = e.type == KeyEventType.KeyUp
             when (e.key) {
@@ -292,8 +311,12 @@ fun LibraryScreen(
             items = menuItems(openPage),
             extras = listOf(HomeMenuItem(MenuIcon.About, "About", selected = MenuState.selected == SettingsPage.About) { openPage(SettingsPage.About) }),
             onQuit = { confirmQuit = true },
+            header = { RaUserHeader() },
             onFocusChanged = { MenuState.menuHasFocus = it },
         )
+        if (openingGame) {
+            LaunchLoadingOverlay("Preparing the disc image. A cached copy is created only when direct access is unavailable on this device.")
+        }
         gameMenu?.let { game ->
             GameOptions(
                 game,

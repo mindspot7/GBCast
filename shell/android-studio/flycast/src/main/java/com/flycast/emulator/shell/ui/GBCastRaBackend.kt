@@ -18,7 +18,7 @@ object GBCastRaBackend : RaBackend {
     private var lastGameTitle = ""
 
     override fun init(userAgent: String) {
-        initialized = JNIdc.raInit()
+        initialized = JNIdc.raInit(userAgent)
         lastLoggedIn = false
         lastUser = ""
         lastToken = ""
@@ -87,8 +87,9 @@ object GBCastRaBackend : RaBackend {
 
     override fun achievements(): ByteArray = JNIdc.raAchievements().orEmpty().toByteArray(Charsets.UTF_8)
 
-    /** All networking goes through Flycast's native rcheevos client, not GBFrame's HTTP callback. */
-    override fun httpResponse(id: Int, status: Int, body: ByteArray?) = Unit
+    override fun httpResponse(id: Int, status: Int, body: ByteArray?) {
+        JNIdc.raHttpResponse(id, status, body)
+    }
 
     /** The current-game screen uses the native game's achievement list; library-wide hashes are not exposed by Flycast here. */
     override fun hashGame(path: String): String? = null

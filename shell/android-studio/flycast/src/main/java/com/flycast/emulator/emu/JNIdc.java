@@ -5,6 +5,8 @@ import android.view.Surface;
 import com.flycast.emulator.Emulator;
 import com.flycast.emulator.periph.SipEmulator;
 
+import gb.frame.RetroAchievements;
+
 public final class JNIdc
 {
 	static { System.loadLibrary("flycast"); }
@@ -55,8 +57,9 @@ public final class JNIdc
 	/** Returns null on success or an error message when Flycast rejects the code. */
 	public static native String addGameSharkCheat(String name, String code);
 
-	// Shared GBFrame RetroAchievements adapter. The core owns authentication, networking and game recognition.
-	public static native boolean raInit();
+	// Shared GBFrame RetroAchievements adapter. The core owns authentication and game recognition;
+	// HTTP is routed through GBFrame so its offline cache/queue is shared by every GB app.
+	public static native boolean raInit(String userAgent);
 	public static native void raLogin(String username, String password);
 	public static native void raLoginWithToken(String username, String token);
 	public static native void raLogout();
@@ -72,4 +75,10 @@ public final class JNIdc
 	public static native String raCurrentGame();
 	/** GBFrame's summary row and achievement rows, tab-separated. */
 	public static native String raAchievements();
+	public static native void raHttpResponse(int id, int status, byte[] body);
+
+	/** Called by native rcheevos; completion returns asynchronously through raHttpResponse. */
+	public static void raHttp(int id, String url, String post, String contentType, String userAgent) {
+		RetroAchievements.INSTANCE.httpRequest(id, url, post, contentType, userAgent);
+	}
 }

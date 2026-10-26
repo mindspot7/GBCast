@@ -7,6 +7,7 @@ import com.flycast.emulator.NativeGLActivity
 import com.flycast.emulator.emu.HttpClient
 import com.flycast.emulator.emu.JNIdc
 import gb.frame.Covers
+import gb.frame.DeviceTier
 import gb.frame.HomeTheme
 import gb.frame.LibraryView
 import gb.frame.OpenDisc
@@ -14,9 +15,12 @@ import gb.frame.PlayTime
 import gb.frame.RetroAchievements
 import gb.frame.SaveData
 import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /** Coordinates the Compose shell with the Flycast core. One staged disc stays open until the next launch. */
 object GBCastBridge {
+    const val AUTO_SAVE_SLOT = SaveData.MANUAL_SAVE_STATE_SLOTS
     const val EXTRA_PATH = "gbcast_game_path"
     const val EXTRA_SLOT = "gbcast_state_slot"
     const val EXTRA_LOAD = "gbcast_load_state"
@@ -38,6 +42,7 @@ object GBCastBridge {
         HomeTheme.init(prefs)
         LibraryView.init(prefs)
         PlayTime.init(prefs)
+        Thread({ DeviceTier.detect() }, "gbcast-device-tier").start()
         Covers.init(File(app.filesDir, "gbcast"), "Sega - Dreamcast", frameAspectRatio = 1.0f)
         app.ensureCore()?.let { error -> throw IllegalStateException(error) }
         val savedSlot = int("config", "Dreamcast.SavestateSlot")
@@ -72,6 +77,43 @@ object GBCastBridge {
             .edit().putBoolean(PREF_SETUP, true).apply()
     }
 
+    suspend fun applyRecommendedPreset(): String {
+        val device = withContext(Dispatchers.IO) { DeviceTier.detect() }
+        val preset = when (device.tier) {
+            DeviceTier.Tier.Entry, DeviceTier.Tier.Low -> "Compatible"
+            DeviceTier.Tier.Mid -> "Balanced"
+            DeviceTier.Tier.High -> "Quality"
+        }
+        when (preset) {
+            "Compatible" -> {
+                setInt("config", "pvr.rend", 0)
+                setInt("config", "rend.Resolution", 480)
+            }
+            "Quality" -> {
+                setInt("config", "pvr.rend", 4)
+                setInt("config", "rend.Resolution", device.gpuMaxScale.coerceIn(2, 4) * 480)
+            }
+            else -> {
+                setInt("config", "pvr.rend", 0)
+                setInt("config", "rend.Resolution", 960)
+                setBool("config", "rend.vsync", true)
+                setBool("config", "rend.FramePacing", true)
+            }
+        }
+        setBool("config", "Dynarec.Enabled", true)
+        return "$preset · ${device.summary}"
+    }
+
+    fun deviceRecommendation(): String {
+        val device = DeviceTier.detect()
+        val preset = when (device.tier) {
+            DeviceTier.Tier.Entry, DeviceTier.Tier.Low -> "Compatible"
+            DeviceTier.Tier.Mid -> "Balanced"
+            DeviceTier.Tier.High -> "Quality"
+        }
+        return "$preset · ${device.summary}"
+    }
+
     fun bool(section: String, name: String) = JNIdc.configGetBool(section, name)
 
     fun setBool(section: String, name: String, value: Boolean): Boolean = JNIdc.configSetBool(section, name, value)
@@ -85,22 +127,28 @@ object GBCastBridge {
     fun biosPresent(): Boolean = File(dataDir(), "dc_boot.bin").isFile || File(dataDir(), "dc_boot.bin.bak").isFile
 
     /** Opens [safPath] and starts [NativeGLActivity]. [slot] loads that Flycast state after boot when auto-load is off. */
-    fun launch(context: Context, safPath: String, slot: Int = -1, fresh: Boolean = false): String? {
-        if (slot != -1 && slot !in 0 until SaveData.MANUAL_SAVE_STATE_SLOTS) {
+    suspend fun launch(context: Context, safPath: String, slot: Int = -1, fresh: Boolean = false): String? {
+        if (slot != -1 && slot !in 0..AUTO_SAVE_SLOT) {
             return "Save slot must be between 1 and ${SaveData.MANUAL_SAVE_STATE_SLOTS}."
         }
-        val opened = Storage.openForCore(safPath) ?: return "Could not open this game. Check the folder permission and the disc files."
+        val opened = withContext(Dispatchers.IO) { Storage.openForCore(safPath) }
+            ?: return "Could not open this game. Check the folder permission and the disc files."
         disc?.close()
         disc = opened
         PlayTime.update(safPath, true)
-        if (slot >= 0) setInt("config", "Dreamcast.SavestateSlot", slot)
         val auto = bool("config", "Dreamcast.AutoLoadState")
+        val launchSlot = when {
+            slot >= 0 -> slot
+            auto && !fresh -> latestStateSlot(safPath) ?: -1
+            else -> -1
+        }
+        if (launchSlot >= 0) setInt("config", "Dreamcast.SavestateSlot", launchSlot)
         val restoreAutoLoad = fresh && auto
         if (restoreAutoLoad) setBool("config", "Dreamcast.AutoLoadState", false)
         val intent = Intent(context, NativeGLActivity::class.java)
             .putExtra(EXTRA_PATH, opened.path)
-            .putExtra(EXTRA_SLOT, slot)
-            .putExtra(EXTRA_LOAD, slot >= 0 && !auto)
+            .putExtra(EXTRA_SLOT, launchSlot)
+            .putExtra(EXTRA_LOAD, launchSlot >= 0 && !auto)
             .putExtra(EXTRA_RESTORE_AUTO_LOAD, restoreAutoLoad)
             .putExtra(EXTRA_AUTO_LOAD_VALUE, auto)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -123,13 +171,21 @@ object GBCastBridge {
             val match = Regex("^(.*?)(?:_(\\d+))?\\.state$").matchEntire(file.name) ?: return@mapNotNull null
             val base = match.groupValues[1]
             val slot = match.groupValues[2].toIntOrNull() ?: 0
-            if (slot !in 0 until SaveData.MANUAL_SAVE_STATE_SLOTS) return@mapNotNull null
+            if (slot !in 0..AUTO_SAVE_SLOT) return@mapNotNull null
             val game = byName[base] ?: return@mapNotNull null
             SaveSlot(game.path, game.title, slot, file.lastModified())
         }.sortedByDescending { it.time }
     }
 
     data class SaveSlot(val gamePath: String, val title: String, val slot: Int, val time: Long)
+
+    private fun latestStateSlot(gamePath: String): Int? {
+        val base = Storage.fileName(gamePath).substringBeforeLast('.')
+        return (0..AUTO_SAVE_SLOT).mapNotNull { slot ->
+            val suffix = if (slot == 0) "" else "_$slot"
+            File(dataDir(), "$base$suffix.state").takeIf(File::isFile)?.let { slot to it.lastModified() }
+        }.maxByOrNull { it.second }?.first
+    }
 }
 
 

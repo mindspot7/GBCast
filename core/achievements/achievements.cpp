@@ -45,6 +45,15 @@
 namespace achievements
 {
 
+static std::mutex httpRequestHandlerMutex;
+static HttpRequestHandler httpRequestHandler;
+
+void setHttpRequestHandler(HttpRequestHandler handler)
+{
+	std::lock_guard<std::mutex> lock(httpRequestHandlerMutex);
+	httpRequestHandler = std::move(handler);
+}
+
 class Achievements
 {
 public:
@@ -600,11 +609,32 @@ void Achievements::clientServerCall(const rc_api_request_t *request, rc_client_s
 	Achievements *achievements = (Achievements *)rc_client_get_userdata(client);
 	std::string url {request->url};
 	std::string payload;
-	if (request->post_data != nullptr)
+	const bool hasPayload = request->post_data != nullptr;
+	if (hasPayload)
 		payload = request->post_data;
 	std::string contentType;
-	if (request->content_type != nullptr)
+	const bool hasContentType = request->content_type != nullptr;
+	if (hasContentType)
 		contentType = request->content_type;
+
+	HttpRequestHandler platformHandler;
+	{
+		std::lock_guard<std::mutex> lock(httpRequestHandlerMutex);
+		platformHandler = httpRequestHandler;
+	}
+	if (platformHandler && platformHandler(url, hasPayload ? &payload : nullptr,
+			hasContentType ? &contentType : nullptr,
+			[achievements, callback, callback_data](int status, std::vector<u8> reply) mutable {
+				achievements->asyncTask([status, reply = std::move(reply), callback, callback_data]() {
+					rc_api_server_response_t response {};
+					response.http_status_code = status > 0 ? status : RC_API_SERVER_RESPONSE_RETRYABLE_CLIENT_ERROR;
+					response.body_length = reply.size();
+					response.body = reinterpret_cast<const char *>(reply.data());
+					callback(&response, callback_data);
+				});
+			}))
+		return;
+
 	achievements->asyncTask([url, contentType, payload, callback, callback_data]() {
 		int rc;
 		std::vector<u8> reply;

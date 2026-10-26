@@ -263,7 +263,8 @@ extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_setupMic(J
 
 static void *savestateThreadFunc(void *)
 {
-	dc_savestate(config::SavestateSlot);
+	// Keep Android auto-save separate from the five numbered/manual slots exposed by GBFrame.
+	dc_savestate(5);
 	return nullptr;
 }
 
@@ -302,7 +303,11 @@ extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_stop(JNIEn
 {
 	stopEmu();
 	savestateThread.WaitToEnd();
+	const int manualSlot = config::SavestateSlot;
+	if (config::AutoSaveState)
+		config::SavestateSlot = 5;
 	gui_stop_game();
+	config::SavestateSlot = manualSlot;
 	input_term();
 }
 

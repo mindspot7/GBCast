@@ -8,10 +8,7 @@ import gb.frame.SafGames
 import java.io.File
 import java.nio.file.Files
 
-/**
- * Games folder through the Storage Access Framework. Discs are copied to real cache files because Flycast reopens
- * tracks by path, and some handhelds refuse a symlink to /proc/self/fd.
- */
+/** Games folder through the Storage Access Framework, preferring direct descriptor-backed access. */
 private object GamesFolder {
     var path: String = ""
 }
@@ -29,36 +26,22 @@ object Storage : SafGames(GameIndex.extensions, { GamesFolder.path }) {
 
     fun openForCore(path: String): OpenDisc? {
         val ext = fileName(path).substringAfterLast('.', "").lowercase()
-        val opened = open(path, stageCopy = ext == "chd") ?: return null
-        return materialize(opened)
-    }
-
-    /**
-     * Flycast reopens every track by path. A symlink to /proc/self/fd is refused on some handhelds, so the staged
-     * descriptor and its sibling tracks are copied to ordinary cache files before the core sees them.
-     */
-    private fun materialize(opened: OpenDisc): OpenDisc? {
+        val opened = open(path) ?: return null
         val src = File(opened.path)
         val parent = src.parentFile
-        if (!src.exists() || parent == null) return opened
-        val files = parent.listFiles()?.filter { it.isFile || Files.isSymbolicLink(it.toPath()) }.orEmpty()
-        if (files.none { Files.isSymbolicLink(it.toPath()) }) return opened
-        val destDir = File(app.cacheDir, "disc-real").apply { deleteRecursively(); mkdirs() }
-        val copied = runCatching {
-            files.forEach { file ->
-                val dest = File(destDir, file.name)
-                file.inputStream().use { input -> dest.outputStream().use { output -> input.copyTo(output) } }
-                if (!dest.isFile || dest.length() <= 0L) error("empty copy ${file.name}")
-            }
-            true
-        }.getOrDefault(false)
-        if (!copied) {
-            opened.close()
-            return null
+        if (parent == null) return opened
+        val links = parent.listFiles()?.filter { Files.isSymbolicLink(it.toPath()) }.orEmpty()
+        if (links.isEmpty()) return opened
+
+        // Flycast reopens descriptor links by path. Most devices allow that directly; probe every referenced track
+        // before deciding this device needs the GBFrame cached-copy fallback.
+        val directAccess = links.all { link -> runCatching { link.inputStream().use { it.read() } }.isSuccess }
+        if (directAccess) {
+            clearDiscCopies()
+            return opened
         }
-        val main = File(destDir, src.name)
         opened.close()
-        return OpenDisc(main.absolutePath, emptyList())
+        return if (ext == "chd" || ext == "iso") open(path, stageCopy = true) else null
     }
 
     fun importFile(uri: Uri, destDir: File): String? {

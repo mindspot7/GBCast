@@ -303,6 +303,8 @@ private fun AudioPage(tick: Int, cfg: Cfg) {
 @Composable
 private fun PerformancePage(tick: Int, cfg: Cfg) {
     SettingsGroup("Performance", Icons.Default.Speed) {
+        InfoRow("Recommended preset", GBCastBridge.deviceRecommendation())
+        SettingsDivider()
         ToggleRow(Icons.Default.Speed, "Dynarec", "Dynarec.Enabled", cfg.bool("config", "Dynarec.Enabled")) { cfg.toggle("config", "Dynarec.Enabled") }
         SettingsDivider()
         ToggleRow(Icons.Default.Speed, "Threaded rendering", null, cfg.bool("config", "rend.ThreadedRendering")) { cfg.toggle("config", "rend.ThreadedRendering") }

@@ -2,12 +2,17 @@ package com.flycast.emulator.shell;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Locale;
 
 /**
- * Syntax validation for RetroAchievements proxy base URLs received across the app boundary.
+ * Validates RetroAchievements proxy base URLs received across the app boundary.
  *
- * This validates URL shape only. It does not authenticate the broadcast sender or decide
- * whether a remote destination is trusted; that policy is tracked separately.
+ * Only loopback destinations on this device are supported. This intentionally rejects
+ * LAN addresses, public hosts, and hostnames other than localhost so the override cannot
+ * redirect RetroAchievements requests to a remote proxy.
+ *
+ * This does not authenticate the broadcast sender; the exported receiver's caller trust
+ * boundary remains separate from destination validation.
  */
 public final class RetroAchievementsHostUrlValidator {
     private RetroAchievementsHostUrlValidator() {}
@@ -24,10 +29,12 @@ public final class RetroAchievementsHostUrlValidator {
         try {
             URI uri = new URI(hostUrl);
             String scheme = uri.getScheme();
+            String host = uri.getHost();
             if (!uri.isAbsolute() || uri.isOpaque()
                     || !("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))
-                    || uri.getHost() == null || uri.getHost().isEmpty()
-                    || uri.getRawUserInfo() != null) {
+                    || host == null || host.isEmpty()
+                    || uri.getRawUserInfo() != null
+                    || !isLoopbackHost(host)) {
                 return false;
             }
 
@@ -36,5 +43,15 @@ public final class RetroAchievementsHostUrlValidator {
         } catch (URISyntaxException e) {
             return false;
         }
+    }
+
+    private static boolean isLoopbackHost(String host) {
+        String normalized = host.toLowerCase(Locale.ROOT);
+        if (normalized.startsWith("[") && normalized.endsWith("]")) {
+            normalized = normalized.substring(1, normalized.length() - 1);
+        }
+        return "localhost".equals(normalized)
+                || "127.0.0.1".equals(normalized)
+                || "::1".equals(normalized);
     }
 }

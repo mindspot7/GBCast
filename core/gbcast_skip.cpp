@@ -3,6 +3,9 @@
 #include "cfg/option.h"
 #include "emulator.h"
 #include "hw/pvr/Renderer_if.h"
+#include "hw/sh4/sh4_if.h"
+#include "hw/sh4/sh4_mem.h"
+#include <cstring>
 #include "ui/gui.h"
 #include <atomic>
 #include <chrono>
@@ -17,6 +20,11 @@ config::Option<bool, false> saveOption("GBFrame.SkipSaveWaits", false);
 gb::AutoSkip engine;
 std::atomic<uint32_t> enabled{0}, generation{0}, discSectors{0}, storageBytes{0};
 std::atomic<bool> running{false}, active{false};
+// Fast boot: the real BIOS intro runs at maximum speed, muted, until the BIOS hands over to the disc (IP.BIN at 8C008000)
+std::atomic<bool> booting{false};
+int bootFrames = 0, bootIpFrames = 0;
+bool bootInIpBin = false;
+int64_t bootStart = 0;
 std::atomic<int64_t> pictureTime{0}, frames{0}, pictures{0}, reads{0}, saves{0}, activeFrames{0}, worstCaptureUs{0}, captureFailures{0}, captureTotalUs{0};
 int64_t nowNs() { return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count(); }
 void reset() {
@@ -31,8 +39,30 @@ void options() {
     enabled.store((loadOption.get() ? 1 : 0) | (transitionOption.get() ? 2 : 0) | (saveOption.get() ? 4 : 0), std::memory_order_relaxed);
     if (!enabled.load(std::memory_order_relaxed)) reset();
 }
+void endBoot(const char* reason) {
+    if (booting.exchange(false, std::memory_order_relaxed))
+        NOTICE_LOG(COMMON, "GBFrame Fast boot off (%s) after %d frames, %d ms", reason, bootFrames, (int)((nowNs() - bootStart) / 1'000'000));
+}
+void bootVBlank() {
+    if (!booting.load(std::memory_order_relaxed)) return;
+    ++bootFrames;
+    // The BIOS menu/intro program also runs from main RAM, so the address alone can't tell it from the game.
+    // The disc's IP.BIN bootstrap (license screen) runs from 8C008000-8C00FFFF once IP.BIN is loaded there;
+    // the game starts when execution leaves that area for main RAM.
+    const u32 pc = Sh4cntx.pc & 0x1FFFFFFF;
+    const bool inRam = (pc & 0x1C000000) == 0x0C000000;
+    const u32 offset = pc & 0x00FFFFFF;
+    const bool inIpBin = inRam && offset >= 0x8000 && offset < 0x10000
+            && memcmp(GetMemPtr(0x8C008000, 16), "SEGA SEGAKATANA ", 16) == 0;
+    bootIpFrames = inIpBin ? bootIpFrames + 1 : (inRam && offset >= 0x10000 ? 0 : bootIpFrames);
+    if (bootIpFrames >= 10) bootInIpBin = true;
+    if (bootInIpBin && inRam && offset >= 0x10000) endBoot("disc running");
+    else if (settings.input.fastForwardMode || settings.network.online) endBoot("user or network");
+    else if (bootFrames > 30 * 60) endBoot("timeout");
+}
 void event(Event event, void*) {
     if (event == Event::VBlank) {
+        bootVBlank();
         if (!enabled.load(std::memory_order_relaxed) || !running.load(std::memory_order_relaxed)) return;
         ++frames;
         const int64_t age = nowNs() - pictureTime.load(std::memory_order_relaxed);
@@ -50,6 +80,11 @@ void event(Event event, void*) {
     }
     if (event == Event::Pause || event == Event::Terminate) running = false;
     else if (event == Event::Start || event == Event::Resume) running = true;
+    if (event == Event::Start && config::FastBoot && settings.platform.isConsole() && !settings.content.path.empty()) {
+        bootFrames = bootIpFrames = 0; bootInIpBin = false; bootStart = nowNs(); booting = true;
+        NOTICE_LOG(COMMON, "GBFrame Fast boot on");
+    }
+    else if (event == Event::LoadState || event == Event::Terminate || event == Event::DiskChange) endBoot("state or disc change");
     reset();
     options();
     if (event == Event::Start) { frames = pictures = reads = saves = activeFrames = worstCaptureUs = captureFailures = captureTotalUs = 0; }
@@ -64,7 +99,7 @@ void InitAutoSkip() {
     }();
     (void)initialized;
 }
-bool AutoSkipActive() { return active.load(std::memory_order_relaxed); }
+bool AutoSkipActive() { return active.load(std::memory_order_relaxed) || booting.load(std::memory_order_relaxed); }
 bool SkipLoads() { return loadOption.get(); }
 bool SkipTransitions() { return transitionOption.get(); }
 bool SkipSaves() { return saveOption.get(); }

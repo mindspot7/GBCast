@@ -432,8 +432,15 @@ extern "C" JNIEXPORT jlong JNICALL Java_com_flycast_emulator_emu_JNIdc_stateTime
 }
 
 extern "C" JNIEXPORT jintArray JNICALL Java_com_flycast_emulator_emu_JNIdc_overlayStats(JNIEnv *env, jclass) {
-	const int height = config::RenderResolution > 0 ? static_cast<int>(config::RenderResolution) : 480;
-	jint values[] = {static_cast<jint>(FrameCount), static_cast<jint>(height * getOutputFramebufferAspectRatio()), height,
+	int height = config::RenderResolution > 0 ? static_cast<int>(config::RenderResolution) : 480;
+	const float aspect = getOutputFramebufferAspectRatio();
+	int width = static_cast<int>(height * aspect);
+	// Super widescreen on a screen narrower than 4:3 keeps the 4:3 width and renders more lines
+	if (config::Widescreen && config::SuperWidescreen && !config::Rotate90 && aspect < 4.f / 3.f) {
+		width = height * 4 / 3;
+		height = static_cast<int>(width / aspect);
+	}
+	jint values[] = {static_cast<jint>(FrameCount), width, height,
 		SPG_CONTROL.isPAL() ? 50 : 60, getRenderer(), settings.input.fastForwardMode ? 1 : 0};
 	jintArray result = env->NewIntArray(6);
 	if (result != nullptr) env->SetIntArrayRegion(result, 0, 6, values);

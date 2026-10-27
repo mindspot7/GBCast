@@ -23,6 +23,15 @@
 #endif
 #include <glm/gtx/transform.hpp>
 
+static float displayAspectRatio() {
+	return settings.display.height > 0 ? (float)settings.display.width / settings.display.height : 4.f / 3.f;
+}
+
+// GBCast: super widescreen follows the screen, also when it is narrower than 4:3 (the view then grows vertically)
+static bool superWidescreenIsTall() {
+	return config::SuperWidescreen && displayAspectRatio() < 4.f / 3.f - 0.01f;
+}
+
 static void getTAViewport(const rend_context& rendCtx, int& width, int& height) {
 	width = rendCtx.globClip.x;
 	height = rendCtx.globClip.y;
@@ -105,19 +114,26 @@ void TransformMatrix::CalcMatrices(const rend_context *renderingContext, int wid
 	}
 	else
 	{
-		float widescreenShift;
+		float widescreenShift = 0;
+		float verticalShift = 0;
 		if (config::Widescreen && !config::Rotate90 && !config::EmulateFramebuffer)
 		{
-			widescreenShift = 1.f - dcViewport.x / dcViewport.y * renderViewport.y / renderViewport.x;
-			if (config::SuperWidescreen)
-				dcViewport.x *= (float)settings.display.width / settings.display.height / 4.f * 3.f;
+			if (superWidescreenIsTall())
+			{
+				// GBCast: on screens narrower than 4:3 (e.g. 1:1) super widescreen extends the view above and below
+				verticalShift = 1.f - dcViewport.y / dcViewport.x * renderViewport.x / renderViewport.y;
+				dcViewport.y *= 4.f / 3.f / displayAspectRatio();
+			}
 			else
-				dcViewport.x *= 4.f / 3.f;
+			{
+				widescreenShift = 1.f - dcViewport.x / dcViewport.y * renderViewport.y / renderViewport.x;
+				if (config::SuperWidescreen)
+					dcViewport.x *= displayAspectRatio() / 4.f * 3.f;
+				else
+					dcViewport.x *= 4.f / 3.f;
+			}
 		}
-		else {
-			widescreenShift = 0;
-		}
-		glm::mat4 trans = glm::translate(glm::vec3(-1 + widescreenShift, -flipY, 0));
+		glm::mat4 trans = glm::translate(glm::vec3(-1 + widescreenShift, -flipY * (1 - verticalShift), 0));
 		float x_coef = 2.0f / dcViewport.x;
 		float y_coef = 2.0f / dcViewport.y * flipY;
 		normalMatrix = trans * glm::scale(glm::vec3(x_coef, y_coef, 1.f));
@@ -269,8 +285,10 @@ void getScaledFramebufferSize(const rend_context& rendCtx, int& width, int& heig
 			float h = height * upscaling;
 			if (config::Widescreen && !config::Rotate90)
 			{
-				if (config::SuperWidescreen)
-					w *= (float)settings.display.width / settings.display.height / 4.f * 3.f;
+				if (superWidescreenIsTall())
+					h *= 4.f / 3.f / displayAspectRatio();
+				else if (config::SuperWidescreen)
+					w *= displayAspectRatio() / 4.f * 3.f;
 				else
 					w *= 4.f / 3.f;
 			}
@@ -318,7 +336,7 @@ float getOutputFramebufferAspectRatio()
 		if (config::Widescreen && !config::EmulateFramebuffer)
 		{
 			if (config::SuperWidescreen)
-				aspectRatio = (float)settings.display.width / settings.display.height;
+				aspectRatio = displayAspectRatio();
 			else
 				aspectRatio = 16.f / 9.f;
 		}

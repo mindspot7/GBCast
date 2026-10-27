@@ -56,6 +56,7 @@ import com.flycast.emulator.shell.GBCastBridge
 import com.flycast.emulator.shell.Storage
 import gb.frame.AboutCredit
 import gb.frame.AboutPage
+import gb.frame.rememberAppIconPainter
 import gb.frame.ActionRow
 import gb.frame.ChoiceRow
 import gb.frame.ControlsPage
@@ -166,7 +167,7 @@ fun SettingsScreen(onBack: () -> Unit, toast: (String) -> Unit, page: SettingsPa
                         appName = "GBCast",
                         manufacturer = "Sega",
                         console = "Dreamcast",
-                        icon = painterResource(R.drawable.ic_launcher_foreground),
+                        icon = rememberAppIconPainter(R.drawable.ic_launcher_foreground),
                         credits = listOf(
                             AboutCredit("Flycast", "Emulation core for Dreamcast, Naomi, Naomi 2 and Atomiswave."),
                             AboutCredit("GBFrame", "Shared Android interface, settings, controls and menu components."),

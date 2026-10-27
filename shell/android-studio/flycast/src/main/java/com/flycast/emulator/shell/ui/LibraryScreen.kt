@@ -65,6 +65,7 @@ import com.flycast.emulator.shell.GameIndex
 import com.flycast.emulator.shell.Storage
 import gb.frame.HomeHelpBar
 import gb.frame.Covers
+import gb.frame.rememberAppIconPainter
 import gb.frame.CoverImageOptions
 import gb.frame.ConfirmDialog
 import gb.frame.HomeActions
@@ -261,7 +262,7 @@ fun LibraryScreen(
         ) {
             if (!fullscreen) {
                 HomeTopBar(
-                    painterResource(R.drawable.ic_launcher_foreground),
+                    rememberAppIconPainter(R.drawable.ic_launcher_foreground),
                     "GBCast",
                     onClick = {
                         if (!menuOpen) MenuState.selected = null
@@ -303,7 +304,7 @@ fun LibraryScreen(
             open = menuOpen,
             onDismiss = { menuOpen = false },
             focus = menuFocus,
-            appIcon = painterResource(R.drawable.ic_launcher_foreground),
+            appIcon = rememberAppIconPainter(R.drawable.ic_launcher_foreground),
             appName = "GBCast",
             themeLabel = style.label,
             fullscreen = fullscreen,

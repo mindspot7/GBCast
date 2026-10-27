@@ -3,7 +3,7 @@
   Non-interactive Android device helpers for GBCast (adb + gh). Results are written to test-output\<timestamp>-<command>.
 .DESCRIPTION
   Commands: Check, Install, Launch, Stop, Wake, Logcat, Crash, Screenshot, Scroll.
-  Install downloads the APK from the latest successful Android workflow on android-port.
+  Install downloads the APK from the latest successful Build GBCast workflow on android-port.
   Use -Serial when several Android devices are connected.
 .EXAMPLE
   powershell -NoProfile -ExecutionPolicy Bypass -File tools\gbcast.ps1 Check
@@ -29,7 +29,7 @@ $Repo = 'mindspot7/GBCast'
 $Branch = 'android-port'
 $App = 'app.gbcast.emulator'
 $Activity = 'com.flycast.emulator.MainActivity'
-$Workflow = 'android.yml'
+$Workflow = 'build.yml'
 $LogTags = 'GBCast\S*|GBFrame\S*|GBNative\S*|flycast|AndroidRuntime|DEBUG|libc'
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 

@@ -56,3 +56,10 @@
 - Fast GD-ROM load remains a separate option: getGDROMTicks() shortens DMA scheduling to 512 cycles; it does not handle scene transitions or save waits. Both features can coexist but are not equivalent. HLE disc reads are detected by the shared Skip Engine even where the hardware DMA timing option does not apply.
 - Detection is heuristic. The standalone native tests cover all three reasons; real-game logs also observed transition detection during Vulkan investigation. No claim of universal game compatibility or a measured percentage reduction in loading time.
 - Local builds only; GitHub synchronization uses [skip ci].
+
+## Lean manual packaging workflow
+
+- Keeps one workflow: Build GBCast, in .github/workflows/build.yml. Manual dispatch only; no push/PR-triggered tests or builds. Android version code is supplied explicitly to preserve update ordering when workflow numbering changes.
+- Removes separate test/lint/app-ID/diagnostic workflows. Unit/device/native tests and local diagnostics remain in the repository; cloud packaging does not execute tests, build a test APK, boot an Android emulator or generate screenshots/profiling reports.
+- Retains signing, compiler/dependency caches, release APK packaging and the native Android 16 KB package validator. Local install helpers now use build.yml.
+- All three workflow files validated locally with actionlint 1.7.12. Local device-tool PowerShell syntax and app-ID checks passed. GBCast's release-only Gradle task graph was checked locally with no unit/instrumentation/debug or Lint tasks.

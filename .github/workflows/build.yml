@@ -1,0 +1,97 @@
+name: Build GBCast
+# Builds the GBCast release APK from the Flycast core and the GBFrame submodule.
+# Run manually after local validation and a successful GBFrame build.
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_code:
+        description: Android version code, higher than the latest local and cloud builds
+        type: string
+        required: true
+
+
+jobs:
+  build:
+    name: Android
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      GBCAST_VERSION_CODE: ${{ inputs.version_code }}
+
+    steps:
+      - name: Validate Android version code
+        env:
+          BUILD_VERSION_CODE: ${{ inputs.version_code }}
+        run: |
+          if [[ ! "$BUILD_VERSION_CODE" =~ ^[1-9][0-9]{0,9}$ ]] || ((10#$BUILD_VERSION_CODE > 2100000000)); then
+            echo "::error::Supply a positive Android version code up to 2100000000."
+            exit 1
+          fi
+
+      - name: Set up ccache
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install ccache
+
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - uses: actions/cache@v6
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-android-${{ github.sha }}
+          restore-keys: ccache-android-
+
+      # Tests run locally before dispatch; cloud runners only package the release APK.
+      - name: Build release APK
+        working-directory: shell/android-studio
+        # CI-only values are passed as Gradle properties; tracked source stays unchanged.
+        # APK only. The App Bundle (.aab) is built for an official numbered release, when asked for.
+        run: ./gradlew :gbcast:assembleRelease --parallel -x lintVitalAnalyzeRelease -x lintVitalReportRelease -x lintVitalRelease -PgbcastVersionCode="$GBCAST_VERSION_CODE" -PgbcastCiDebugSigning=true
+
+      - name: Name APK with app version
+        id: apk
+        run: |
+          VERSION=$(git describe --tags --always)
+          NAME="GBCast-v${VERSION}-build${GBCAST_VERSION_CODE}"
+          APK_DIR="shell/android-studio/flycast/build/outputs/apk/release"
+          APK=$(find "$APK_DIR" -maxdepth 1 -type f -name '*.apk' -print -quit)
+          test -n "$APK"
+          mv "$APK" "$APK_DIR/${NAME}.apk"
+          echo "name=${NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Validate APK 16 KB compatibility (GBFrame shared validator)
+        shell: bash
+        run: |
+          set -euo pipefail
+          VALIDATOR="$RUNNER_TEMP/check-android-16kb.sh"
+          curl --fail --silent --show-error --location \
+            "https://raw.githubusercontent.com/mindspot7/GBFrame/6fb96ecac381cf7613b7e3321ade39b73b052fd0/tools/check-android-16kb.sh" \
+            -o "$VALIDATOR"
+          APK_DIR="shell/android-studio/flycast/build/outputs/apk/release"
+          APK=$(find "$APK_DIR" -maxdepth 1 -type f -name '*.apk' -print -quit)
+          test -n "$APK"
+          bash "$VALIDATOR" "$APK"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.apk.outputs.name }}
+          path: shell/android-studio/flycast/build/outputs/apk/release/${{ steps.apk.outputs.name }}.apk

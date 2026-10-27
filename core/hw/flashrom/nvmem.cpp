@@ -173,25 +173,29 @@ static void fixUpDCFlash()
 	struct flash_syscfg_block syscfg;
 	int res = static_cast<DCFlashChip*>(sys_nvmem)->ReadBlock(FLASH_PT_USER, FLASH_USER_SYSCFG, &syscfg);
 
-	if (!res)
-	{
-		// write out default settings
-		memset(&syscfg, 0xff, sizeof(syscfg));
-		syscfg.time_lo = 0;
-		syscfg.time_hi = 0;
-		syscfg.time_zone = 0;
-		syscfg.lang = 0;
-		syscfg.mono = 0;
-		syscfg.autostart = 1;
-	}
 	u32 now = aica::GetRTC_now();
-	syscfg.time_lo = now & 0xffff;
-	syscfg.time_hi = now >> 16;
-	if (config::Language <= 5)
-		syscfg.lang = config::Language;
+	// Without Fast boot a flash that was never set up stays that way, so the BIOS shows its clock and language screens
+	if (res || config::FastBoot)
+	{
+		if (!res)
+		{
+			// write out default settings
+			memset(&syscfg, 0xff, sizeof(syscfg));
+			syscfg.time_lo = 0;
+			syscfg.time_hi = 0;
+			syscfg.time_zone = 0;
+			syscfg.lang = 0;
+			syscfg.mono = 0;
+			syscfg.autostart = 1;
+		}
+		syscfg.time_lo = now & 0xffff;
+		syscfg.time_hi = now >> 16;
+		if (config::Language <= 5)
+			syscfg.lang = config::Language;
 
-	if (static_cast<DCFlashChip*>(sys_nvmem)->WriteBlock(FLASH_PT_USER, FLASH_USER_SYSCFG, &syscfg) != 1)
-		WARN_LOG(FLASHROM, "Failed to save time and language to flash RAM");
+		if (static_cast<DCFlashChip*>(sys_nvmem)->WriteBlock(FLASH_PT_USER, FLASH_USER_SYSCFG, &syscfg) != 1)
+			WARN_LOG(FLASHROM, "Failed to save time and language to flash RAM");
+	}
 
 	add_isp_to_nvmem(static_cast<DCFlashChip*>(sys_nvmem), config::ISPUsername.get().c_str());
 

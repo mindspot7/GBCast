@@ -493,6 +493,7 @@ extern Option<int> GDBPort;
 extern Option<bool> GDBWaitForConnection;
 extern Option<bool> UseReios;
 extern Option<bool> FastGDRomLoad;
+extern Option<bool> FastBoot; // GBFrame Fast boot: create the flash system configuration so the BIOS skips its setup screens
 extern Option<bool> RamMod32MB;
 
 extern Option<bool> OpenGlChecks;

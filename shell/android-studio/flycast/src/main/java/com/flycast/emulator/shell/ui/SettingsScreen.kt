@@ -262,6 +262,7 @@ private fun SystemPage(tick: Int, cfg: Cfg, onFolder: () -> Unit, onBios: () -> 
             }
         },
         startup = SystemStartupOptions(
+            fastBoot = SystemToggleSetting(cfg.bool("config", "GBFrame.FastBoot"), { cfg.setBool("config", "GBFrame.FastBoot", it) }, "Skip the BIOS clock and language screens"),
             skipLoadingScreens = SystemToggleSetting(cfg.bool("config", "GBFrame.SkipLoadingScreens"), { cfg.setBool("config", "GBFrame.SkipLoadingScreens", it) }),
             skipTransitions = SystemToggleSetting(cfg.bool("config", "GBFrame.SkipTransitions"), { cfg.setBool("config", "GBFrame.SkipTransitions", it) }),
             skipSaveWaits = SystemToggleSetting(cfg.bool("config", "GBFrame.SkipSaveWaits"), { cfg.setBool("config", "GBFrame.SkipSaveWaits", it) }),

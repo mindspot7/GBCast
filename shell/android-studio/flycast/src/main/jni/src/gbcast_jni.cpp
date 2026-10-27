@@ -162,6 +162,8 @@ static bool getSkipSaves() { return gbcast::SkipSaves(); }
 static void setSkipLoads(bool v) { gbcast::SetSkipLoads(v); }
 static void setSkipTransitions(bool v) { gbcast::SetSkipTransitions(v); }
 static void setSkipSaves(bool v) { gbcast::SetSkipSaves(v); }
+static bool getFastBoot() { return config::FastBoot; }
+static void setFastBoot(bool v) { config::FastBoot = v; }
 static bool getFastGd() { return config::FastGDRomLoad; }
 static void setFastGd(bool v) { config::FastGDRomLoad = v; }
 static bool getRam() { return config::RamMod32MB; }
@@ -208,6 +210,7 @@ static const BoolOpt kBools[] = {
 	{"config", "Dreamcast.AutoLoadState", getAutoLoad, setAutoLoad},
 	{"config", "Dreamcast.AutoSaveState", getAutoSave, setAutoSave},
 	{"config", "ForceFreePlay", getFreePlay, setFreePlay},
+	{"config", "GBFrame.FastBoot", getFastBoot, setFastBoot},
 	{"config", "FastGDRomLoad", getFastGd, setFastGd},
 	{"config", "GBFrame.SkipLoadingScreens", getSkipLoads, setSkipLoads},
 	{"config", "GBFrame.SkipTransitions", getSkipTransitions, setSkipTransitions},

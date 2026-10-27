@@ -18,6 +18,9 @@
 */
 #define GLM_FORCE_SWIZZLE 1
 #include "transform_matrix.h"
+#ifdef __ANDROID__
+#include "video_layout.h"
+#endif
 #include <glm/gtx/transform.hpp>
 
 static void getTAViewport(const rend_context& rendCtx, int& width, int& height) {
@@ -362,6 +365,12 @@ void getDCFramebufferReadSize(const FramebufferInfo& info, int& width, int& heig
 
 void getWindowboxDimensions(int outwidth, int outheight, float renderAR, int& dx, int& dy, bool rotate)
 {
+#ifdef __ANDROID__
+	if (config::StretchToWindow) {
+		dx = dy = 0;
+		return;
+	}
+#endif
 	if (outwidth == 0 || outheight == 0 || renderAR == 0.f) {
 		dx = dy = 0;
 		return;
@@ -396,6 +405,18 @@ void getWindowboxDimensions(int outwidth, int outheight, float renderAR, int& dx
 		else
 			dx = (int)roundf(outwidth * (1 - renderAR / screenAR) / 2.f);
 	}
+}
+
+PresentationViewport getPresentationViewport(int width, int height, float aspectRatio, bool rotate)
+{
+	int dx = 0, dy = 0;
+	getWindowboxDimensions(width, height, aspectRatio, dx, dy, rotate);
+#ifdef __ANDROID__
+	const auto rect = gb::topAlignedVideoRect(width, height, dx, dy);
+	return {rect.x, rect.y, rect.width, rect.height};
+#else
+	return {dx, dy, width - dx * 2, height - dy * 2};
+#endif
 }
 
 void getVideoShift(float& x, float& y)

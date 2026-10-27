@@ -25,6 +25,7 @@ import com.flycast.emulator.emu.JNIdc
 import com.flycast.emulator.shell.ui.DreamcastControls
 import com.flycast.emulator.shell.ui.GBCastTheme
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.io.File
 
 @Composable
@@ -68,12 +69,22 @@ object GbcastGameUi {
         attachedActivity = activity
         glView = gameView
         Storage.start(activity)
+        com.flycast.emulator.shell.ui.GBCastOverlayOptions.initialize(activity)
         val view = ComposeView(activity).apply {
+            // Keyboard focus belongs to Compose's child owner, not this Android wrapper.
+            descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-            setContent { if (visible) QuickMenu(activity) }
-            visibility = View.GONE
-            isFocusable = true
-            isFocusableInTouchMode = true
+            setContent {
+                GBCastTheme {
+                    androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
+                        com.flycast.emulator.shell.ui.GBCastGameplayOverlays(visible) { onAndroidBack(activity) }
+                        if (visible) QuickMenu(activity)
+                    }
+                }
+            }
+            visibility = View.VISIBLE
+            isFocusable = false
+            isFocusableInTouchMode = false
         }
         compose = view
         layout.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
@@ -99,6 +110,15 @@ object GbcastGameUi {
     }
 
     @JvmStatic
+    fun prepareMenuKey(event: KeyEvent) {
+        if (event.action == KeyEvent.ACTION_DOWN &&
+            (KeyEvent.isGamepadButton(event.keyCode) || event.keyCode in KeyEvent.KEYCODE_DPAD_UP..KeyEvent.KEYCODE_DPAD_CENTER)) {
+            // Exit Android touch mode before redispatching the same physical key into Compose.
+            if (compose?.isInTouchMode == true) compose?.requestFocusFromTouch()
+        }
+    }
+
+    @JvmStatic
     fun onAndroidBack(activity: Activity) {
         when (GbcastBackPolicy.decide(JNIdc.guiState(), visible)) {
             GbcastBackPolicy.Action.OPEN_NATIVE_SETTINGS -> JNIdc.guiOpenSettings()
@@ -121,6 +141,8 @@ object GbcastGameUi {
         menuOwnsKeys = true
         glView?.isFocusable = false
         glView?.isFocusableInTouchMode = false
+        compose?.isFocusable = true
+        compose?.isFocusableInTouchMode = true
         compose?.visibility = View.VISIBLE
         compose?.requestFocusFromTouch()
         compose?.requestFocus()
@@ -129,7 +151,8 @@ object GbcastGameUi {
     private fun resume() {
         visible = false
         menuOwnsKeys = false
-        compose?.visibility = View.GONE
+        compose?.isFocusable = false
+        compose?.isFocusableInTouchMode = false
         if (JNIdc.guiState() == PAUSE) JNIdc.guiTogglePause()
         glView?.isFocusable = true
         glView?.isFocusableInTouchMode = true
@@ -140,12 +163,15 @@ object GbcastGameUi {
         JNIdc.guiSetState(state)
         visible = false
         menuOwnsKeys = false
-        compose?.visibility = View.GONE
+        compose?.isFocusable = false
+        compose?.isFocusableInTouchMode = false
         glView?.requestFocus()
     }
 
     @Composable
     private fun QuickMenu(activity: Activity) {
+        val saveScope = androidx.compose.runtime.rememberCoroutineScope()
+        var savingState by androidx.compose.runtime.remember { mutableStateOf(false) }
         var tick by androidx.compose.runtime.remember { mutableIntStateOf(0) }
         val toast: (String) -> Unit = { text ->
             android.widget.Toast.makeText(activity, text, android.widget.Toast.LENGTH_SHORT).show()
@@ -179,10 +205,14 @@ object GbcastGameUi {
             gb.frame.QuickMenuPage("save-state", "Save state") {
                 for (index in 0 until gb.frame.SaveData.MANUAL_SAVE_STATE_SLOTS) {
                     StateSlot(index, save = true) {
-                        JNIdc.configSetInt("config", "Dreamcast.SavestateSlot", index)
-                                JNIdc.saveCurrentSlot()
-                        toast("Saved slot " + (index + 1))
-                        dismiss()
+                        if (!savingState) saveScope.launch {
+                            savingState = true
+                            try {
+                                val error = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { JNIdc.saveSlotWithPreview(index) }
+                                if (error == null) { toast("Saved slot " + (index + 1)); dismiss() }
+                                else toast(error)
+                            } finally { savingState = false }
+                        }
                     }
                 }
             }
@@ -228,13 +258,19 @@ object GbcastGameUi {
                     setInt("config", "rend.Resolution", resolutionValues[(resolutionIndex + 1) % resolutionValues.size].first)
                 }
 
+                val displayMode = DisplayMode.current(::currentBool)
+                gb.frame.QuickMenuItemRow(
+                    id = "display-mode", icon = androidx.compose.material.icons.Icons.Default.AspectRatio,
+                    label = "Display mode", value = displayMode.label,
+                ) {
+                    DisplayMode.entries[(displayMode.ordinal + 1) % DisplayMode.entries.size].apply(::setBool)
+                    setInt("config", "rend.ScreenStretching", 100)
+                }
+
                 for ((key, label) in listOf(
-                    "rend.WideScreen" to "Widescreen",
-                    "rend.SuperWideScreen" to "Super widescreen",
                     "rend.WidescreenGameHacks" to "Widescreen game hacks",
                     "rend.vsync" to "VSync",
                     "rend.IntegerScale" to "Integer scale",
-                    "rend.ShowFPS" to "Show FPS",
                 )) {
                     gb.frame.QuickMenuItemRow(
                         id = key, icon = androidx.compose.material.icons.Icons.Default.Tv,
@@ -264,7 +300,6 @@ object GbcastGameUi {
                     "rend.UseMipmaps" to "Mipmaps",
                     "rend.DelayFrameSwapping" to "Delay frame swapping",
                     "rend.EmulateFramebuffer" to "Emulate framebuffer",
-                    "rend.Rotate90" to "Rotate 90°",
                 )) {
                     gb.frame.QuickMenuItemRow(
                         id = key, icon = androidx.compose.material.icons.Icons.Default.Tune,
@@ -331,10 +366,10 @@ object GbcastGameUi {
         val overlaysPage = androidx.compose.runtime.remember {
             gb.frame.QuickMenuPage("overlays", "Overlays") {
 
-                gb.frame.QuickMenuItemRow(
-                    id = "show-fps", icon = androidx.compose.material.icons.Icons.Default.Speed,
-                    label = "Show FPS", value = if (currentBool("config", "rend.ShowFPS")) "On" else "Off",
-                ) { setBool("config", "rend.ShowFPS", !currentBool("config", "rend.ShowFPS")) }
+                for ((key, label, enabled) in com.flycast.emulator.shell.ui.GBCastOverlayOptions.items()) {
+                    gb.frame.QuickMenuItemRow(id = "overlay-$key", icon = Icons.Default.Speed, label = label,
+                        value = if (enabled) "On" else "Off") { com.flycast.emulator.shell.ui.GBCastOverlayOptions.set(key, !enabled) }
+                }
                 gb.frame.QuickMenuItemRow(
                     id = "touch-controls", icon = androidx.compose.material.icons.Icons.Default.TouchApp,
                     label = "Touch controls", value = if (com.flycast.emulator.shell.ui.DreamcastControls.showTouchControls) "Shown" else "Hidden",
@@ -387,15 +422,6 @@ object GbcastGameUi {
                     JNIdc.setPerGameConfig(!JNIdc.hasPerGameConfig())
                     tick++
                 }
-                gb.frame.QuickMenuItemRow(
-                    id = "auto-load", icon = androidx.compose.material.icons.Icons.Default.Restore,
-                    label = "Auto load state", value = if (currentBool("config", "Dreamcast.AutoLoadState")) "On" else "Off",
-                ) { setBool("config", "Dreamcast.AutoLoadState", !currentBool("config", "Dreamcast.AutoLoadState")) }
-                gb.frame.QuickMenuItemRow(
-                    id = "auto-save", icon = androidx.compose.material.icons.Icons.Default.Save,
-                    label = "Auto save state", value = if (currentBool("config", "Dreamcast.AutoSaveState")) "On" else "Off",
-                ) { setBool("config", "Dreamcast.AutoSaveState", !currentBool("config", "Dreamcast.AutoSaveState")) }
-
                 gb.frame.QuickMenuItemRow(
                     id = "native-settings", icon = androidx.compose.material.icons.Icons.Default.Tune,
                     label = "Advanced emulator settings",

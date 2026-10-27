@@ -34,8 +34,8 @@ Option<int> Region("Dreamcast.Region", 1);			// USA
 Option<int> Broadcast("Dreamcast.Broadcast", 0);	// NTSC
 Option<int> Language("Dreamcast.Language", 1);		// English
 OptionString UILanguage("UILanguage", "");
-Option<bool> AutoLoadState("Dreamcast.AutoLoadState");
-Option<bool> AutoSaveState("Dreamcast.AutoSaveState");
+Option<bool, false> AutoLoadState("Dreamcast.AutoLoadState");
+Option<bool, false> AutoSaveState("Dreamcast.AutoSaveState");
 Option<int, false> SavestateSlot("Dreamcast.SavestateSlot");
 Option<bool> ForceFreePlay("ForceFreePlay", true);
 Option<bool, false> FetchBoxart("FetchBoxart", true);
@@ -82,6 +82,7 @@ Option<bool> DumpTextures("rend.DumpTextures");
 Option<bool> DumpUniqueTextures("rend.DumpUniqueTextures");
 Option<bool> DumpReplacedTextures("rend.DumpReplacedTextures");
 Option<int> ScreenStretching("rend.ScreenStretching", 100);
+Option<bool> StretchToWindow("rend.StretchToWindow");
 Option<bool> Fog("rend.Fog", true);
 Option<bool> FloatVMUs("rend.FloatVMUs");
 Option<bool> Rotate90("rend.Rotate90");

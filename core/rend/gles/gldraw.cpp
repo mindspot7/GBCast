@@ -768,10 +768,12 @@ bool OpenGLRenderer::renderLastFrame()
 	int dy = 0;
 	glcache.Disable(GL_SCISSOR_TEST);
 	getWindowboxDimensions(settings.display.width, settings.display.height, gl.ofbo.aspectRatio, dx, dy, config::Rotate90);
+	const auto viewport = getPresentationViewport(settings.display.width, settings.display.height, gl.ofbo.aspectRatio, config::Rotate90);
+	const int glBottom = settings.display.height - viewport.y - viewport.height;
 
 	if (gl.bogusBlitFramebuffer || config::Rotate90)
 	{
-		glViewport(dx, dy, settings.display.width - dx * 2, settings.display.height - dy * 2);
+		glViewport(viewport.x, glBottom, viewport.width, viewport.height);
 		glBindFramebuffer(GL_FRAMEBUFFER, gl.ofbo.origFbo);
 		glcache.ClearColor(VO_BORDER_COL.red(), VO_BORDER_COL.green(), VO_BORDER_COL.blue(), 1.f);
 		glClear(GL_COLOR_BUFFER_BIT);
@@ -803,7 +805,7 @@ bool OpenGLRenderer::renderLastFrame()
 		glcache.ClearColor(VO_BORDER_COL.red(), VO_BORDER_COL.green(), VO_BORDER_COL.blue(), 1.f);
 		glClear(GL_COLOR_BUFFER_BIT);
 		glBlitFramebuffer(-gl.ofbo.shiftX, -gl.ofbo.shiftY, framebuffer->getWidth() - gl.ofbo.shiftX, framebuffer->getHeight() - gl.ofbo.shiftY,
-				dx, settings.display.height - dy, settings.display.width - dx, dy,
+				viewport.x, glBottom + viewport.height, viewport.x + viewport.width, glBottom,
 				GL_COLOR_BUFFER_BIT, config::LinearInterpolation ? GL_LINEAR : GL_NEAREST);
     	glBindFramebuffer(GL_FRAMEBUFFER, gl.ofbo.origFbo);
 #endif

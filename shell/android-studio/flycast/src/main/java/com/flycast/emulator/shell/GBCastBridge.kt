@@ -45,6 +45,8 @@ object GBCastBridge {
         Thread({ DeviceTier.detect() }, "gbcast-device-tier").start()
         Covers.init(File(app.filesDir, "gbcast"), "Sega - Dreamcast", frameAspectRatio = 1.0f)
         app.ensureCore()?.let { error -> throw IllegalStateException(error) }
+        com.flycast.emulator.shell.ui.GBCastOverlayOptions.initialize(app)
+        com.flycast.emulator.shell.ui.GBCastCheatDatabase.initialize(app)
         val savedSlot = int("config", "Dreamcast.SavestateSlot")
         if (savedSlot !in 0 until SaveData.MANUAL_SAVE_STATE_SLOTS) {
             setInt("config", "Dreamcast.SavestateSlot", 0)
@@ -142,18 +144,20 @@ object GBCastBridge {
             auto && !fresh -> latestStateSlot(safPath) ?: -1
             else -> -1
         }
-        if (launchSlot >= 0) setInt("config", "Dreamcast.SavestateSlot", launchSlot)
-        val restoreAutoLoad = fresh && auto
+        // The native boot reloads per-game slot settings. Load the chosen latest slot explicitly
+        // after that reload, rather than letting boot load a stale numbered slot.
+        val restoreAutoLoad = auto
         if (restoreAutoLoad) setBool("config", "Dreamcast.AutoLoadState", false)
         val intent = Intent(context, NativeGLActivity::class.java)
             .putExtra(EXTRA_PATH, opened.path)
             .putExtra(EXTRA_SLOT, launchSlot)
-            .putExtra(EXTRA_LOAD, launchSlot >= 0 && !auto)
+            .putExtra(EXTRA_LOAD, launchSlot >= 0)
             .putExtra(EXTRA_RESTORE_AUTO_LOAD, restoreAutoLoad)
             .putExtra(EXTRA_AUTO_LOAD_VALUE, auto)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         try {
             context.startActivity(intent)
+            LibraryView.gameOpened(safPath)
         } catch (_: Exception) {
             if (restoreAutoLoad) setBool("config", "Dreamcast.AutoLoadState", auto)
             opened.close()

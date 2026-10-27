@@ -45,12 +45,20 @@ public final class JNIdc
 	public static native void guiTogglePause();
 	public static native void restartGame();
 	public static native void saveCurrentSlot();
+	public static native String saveSlotWithPreview(int slot);
+	public static native int[] overlayStats();
+	public static native String overlayGpuName();
+	public static native String pollOverlayMessage();
+	public static native String raOverlayEvents();
 	public static native byte[] stateThumbnail(int slot);
 	public static native long stateTimestamp(int slot);
 	public static native void setFastForwardMode(boolean enabled);
 	public static native boolean loadCurrentSlot();
+	public static native boolean loadStateSlot(int slot);
 	public static native String insertDisk(String path);
 	public static native int cheatCount();
+	/** Appends validated .cht RAM operations, disabled, preserving existing and built-in cheats. */
+	public static native int importCheatFile(String path);
 	public static native String cheatDescription(int index);
 	public static native boolean cheatEnabled(int index);
 	public static native boolean cheatBuiltIn(int index);

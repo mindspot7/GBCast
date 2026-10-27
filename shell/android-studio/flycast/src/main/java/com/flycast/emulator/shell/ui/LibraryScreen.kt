@@ -333,6 +333,7 @@ fun LibraryScreen(
                     actions.fresh(game)
                 },
                 onCover = { picker(game.title) },
+                onCoverApplied = { coverVersion++; gameMenu = null },
             )
         }
         if (confirmQuit) {
@@ -412,10 +413,11 @@ private fun GameOptions(
     onContinue: (ResumeEntry) -> Unit,
     onOpen: () -> Unit,
     onCover: () -> Unit,
+    onCoverApplied: () -> Unit,
 ) {
     var coverOptions by remember(game.key) { mutableStateOf(false) }
     if (coverOptions) {
-        CoverImageOptions(game.title, onLocalSearch = onCover, onDismiss = { coverOptions = false })
+        CoverImageOptions(game.title, onLocalSearch = onCover, onDismiss = { coverOptions = false }, onApplied = onCoverApplied)
         return
     }
     AlertDialog(

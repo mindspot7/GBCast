@@ -1131,9 +1131,10 @@ void VulkanContext::DrawFrame(vk::ImageView imageView, const vk::Extent2D& exten
 	int dy = 0;
 	getWindowboxDimensions(width, height, aspectRatio, dx, dy, config::Rotate90);
 	
-	vk::Viewport viewport(dx, dy, width - dx * 2, height - dy * 2);
+	const auto video = getPresentationViewport(width, height, aspectRatio, config::Rotate90);
+	vk::Viewport viewport(video.x, video.y, video.width, video.height);
 	commandBuffer.setViewport(0, viewport);
-	commandBuffer.setScissor(0, vk::Rect2D(vk::Offset2D(dx, dy), vk::Extent2D(width - dx * 2, height - dy * 2)));
+	commandBuffer.setScissor(0, vk::Rect2D(vk::Offset2D(video.x, video.y), vk::Extent2D(video.width, video.height)));
 	if (config::Rotate90)
 		quadRotateDrawer->Draw(commandBuffer, imageView, vtx, !config::LinearInterpolation);
 	else

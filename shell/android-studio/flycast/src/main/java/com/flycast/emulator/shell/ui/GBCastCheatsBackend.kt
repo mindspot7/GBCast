@@ -33,7 +33,26 @@ object GBCastCheatsBackend : CheatsBackend {
         }
 
     override val databaseStatus: String
-        get() = "GBCast GameShark codes for the current game. No external cheat database is configured."
+        get() = GBCastCheatDatabase.entry()?.let { "Offline cheat database: $it" }
+            ?: "No unambiguous Dreamcast cheat database entry for this game."
+
+    override val canAddFromDatabase: Boolean
+        get() = GBCastCheatDatabase.entry() != null
+
+    override fun addFromDatabase(): CheatActionResult {
+        blockedMessage?.let { return CheatActionResult.failure(it) }
+        val entry = GBCastCheatDatabase.entry() ?: return CheatActionResult.failure("No matching database entry.")
+        return importNative(GBCastCheatDatabase.text(entry))
+    }
+
+    private fun importNative(text: String): CheatActionResult {
+        val count = runCatching { GBCastCheatDatabase.importText(text) }.getOrElse {
+            return CheatActionResult.failure(it.message ?: "Could not import cheats.")
+        }
+        revision++
+        return if (count < 0) CheatActionResult.failure("Could not import cheats for the active game.")
+        else CheatActionResult.success(if (count == 0) "No new supported cheats; duplicates are preserved." else "Added $count cheat(s), disabled. Enable the ones you want.")
+    }
 
     override val codeHint: String
         get() = "GameShark code (hex words separated by spaces)"
@@ -72,6 +91,7 @@ object GBCastCheatsBackend : CheatsBackend {
 
     override fun importFile(contents: String): CheatActionResult {
         blockedMessage?.let { return CheatActionResult.failure(it) }
+        if (Regex("(?m)^\\s*cheat\\d+_address\\s*=").containsMatchIn(contents)) return importNative(contents)
         val sourceLines = contents.lineSequence()
             .map { it.trim() }
             .filter { it.isNotEmpty() && !it.startsWith("#") && !it.startsWith(";") && !it.startsWith("[") }

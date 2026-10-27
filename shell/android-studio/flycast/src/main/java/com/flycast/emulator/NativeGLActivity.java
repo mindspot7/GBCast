@@ -35,6 +35,7 @@ public final class NativeGLActivity extends BaseGLActivity {
     // Resume gameplay if Android backgrounded the activity while the game was running.
     private boolean resumeGameplayAfterBackground;
     private InputManager inputManager;
+    private boolean ignoreMenuBackUp;
     private final InputManager.InputDeviceListener gamepadListener = new InputManager.InputDeviceListener() {
         @Override public void onInputDeviceAdded(int id) { updateTouchControlsVisibility(); }
         @Override public void onInputDeviceRemoved(int id) { updateTouchControlsVisibility(); }
@@ -92,8 +93,37 @@ public final class NativeGLActivity extends BaseGLActivity {
     }
 
     @Override
-    @SuppressLint("RestrictedApi") // Remapped controller events must re-enter the Activity's normal dispatch pipeline.
+    @SuppressLint({"RestrictedApi", "GestureBackNavigation"}) // Physical B/Back pairs are deduplicated here; navigation still uses AndroidX Back callbacks.
     public boolean dispatchKeyEvent(KeyEvent event) {
+        if (com.flycast.emulator.shell.GbcastGameUi.getMenuOwnsKeys()) {
+            final int key = event.getKeyCode();
+            if (key == KeyEvent.KEYCODE_BACK) {
+                if (event.getAction() == KeyEvent.ACTION_DOWN && com.flycast.emulator.shell.GbcastInput.consumePairedBack(event)) {
+                    ignoreMenuBackUp = true;
+                    return true;
+                }
+                if (event.getAction() == KeyEvent.ACTION_UP && ignoreMenuBackUp) {
+                    ignoreMenuBackUp = false;
+                    return true;
+                }
+                if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled())
+                    getOnBackPressedDispatcher().onBackPressed();
+                return true;
+            }
+            if (key == KeyEvent.KEYCODE_BUTTON_B) {
+                if (event.getAction() == KeyEvent.ACTION_DOWN) com.flycast.emulator.shell.GbcastInput.note(event);
+                if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled())
+                    getOnBackPressedDispatcher().onBackPressed();
+                return true;
+            }
+            com.flycast.emulator.shell.GbcastGameUi.prepareMenuKey(event);
+            if (key == KeyEvent.KEYCODE_BUTTON_A) {
+                return super.dispatchKeyEvent(new KeyEvent(event.getDownTime(), event.getEventTime(), event.getAction(),
+                        KeyEvent.KEYCODE_DPAD_CENTER, event.getRepeatCount(), event.getMetaState(), event.getDeviceId(),
+                        event.getScanCode(), event.getFlags(), event.getSource()));
+            }
+            return super.dispatchKeyEvent(event);
+        }
         if (!com.flycast.emulator.shell.GbcastGameUi.getMenuOwnsKeys() &&
                 event.getKeyCode() != KeyEvent.KEYCODE_BACK &&
                 (event.getAction() == KeyEvent.ACTION_DOWN || event.getAction() == KeyEvent.ACTION_UP)) {
@@ -209,7 +239,12 @@ public final class NativeGLActivity extends BaseGLActivity {
     private void tryLoadState() {
         if (!wantLoad)
             return;
-        if (com.flycast.emulator.emu.JNIdc.loadCurrentSlot()) {
+        int slot = getIntent().getIntExtra(com.flycast.emulator.shell.GBCastBridge.EXTRA_SLOT, -1);
+        if (slot < 0 || slot > com.flycast.emulator.shell.GBCastBridge.AUTO_SAVE_SLOT) {
+            wantLoad = false;
+            return;
+        }
+        if (com.flycast.emulator.emu.JNIdc.loadStateSlot(slot)) {
             wantLoad = false;
             return;
         }

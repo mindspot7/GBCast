@@ -24,6 +24,8 @@ import gb.frame.Hotkeys
 import gb.frame.PadButton
 import gb.frame.PadLayout
 import gb.frame.padRect
+import gb.frame.rememberAppIconPainter
+import app.gbcast.emulator.R
 
 /** Dreamcast adapter for GBFrame's shared Controls page. */
 object DreamcastControls : ControlsHost {
@@ -205,65 +207,18 @@ object DreamcastControls : ControlsHost {
     }
 }
 
+// Positions use the alpha-trimmed controller artwork, matching what PadDiagram actually displays.
 private val DreamcastPad = PadLayout(listOf(
-    PadButton("L", "L", x = .25f, y = .14f, w = .20f, h = .13f, wOfWidth = true, shape = padRect(10), color = Color(0xFF47435F)),
-    PadButton("R", "R", x = .75f, y = .14f, w = .20f, h = .13f, wOfWidth = true, shape = padRect(10), color = Color(0xFF47435F)),
-    PadButton("Up", icon = Icons.Default.KeyboardArrowUp, x = .23f, y = .33f, w = .17f, h = .17f, shape = padRect(), color = Color(0xFF343B50)),
-    PadButton("Down", icon = Icons.Default.KeyboardArrowDown, x = .23f, y = .67f, w = .17f, h = .17f, shape = padRect(), color = Color(0xFF343B50)),
-    PadButton("Left", icon = Icons.AutoMirrored.Filled.KeyboardArrowLeft, x = .15f, y = .50f, w = .17f, h = .17f, shape = padRect(), color = Color(0xFF343B50)),
-    PadButton("Right", icon = Icons.AutoMirrored.Filled.KeyboardArrowRight, x = .31f, y = .50f, w = .17f, h = .17f, shape = padRect(), color = Color(0xFF343B50)),
-    PadButton("Start", "START", x = .50f, y = .62f, w = .11f, h = .10f, wOfWidth = true, shape = RoundedCornerShape(50), color = Color(0xFF6E58D8)),
-    PadButton("X", "X", x = .66f, y = .38f, w = .18f, h = .18f, color = Color(0xFF6385C4)),
-    PadButton("Y", "Y", x = .75f, y = .33f, w = .18f, h = .18f, color = Color(0xFFCEB45E)),
-    PadButton("A", "A", x = .64f, y = .62f, w = .18f, h = .18f, color = Color(0xFF3C8D83)),
-    PadButton("B", "B", x = .74f, y = .58f, w = .18f, h = .18f, color = Color(0xFFBD625A)),
-), body = {
-    // GBFrame's PadLayout owns all common hit testing, buttons and remapping; only the console shell
-    // is app-specific. The VMU bay and single central handle distinguish Dreamcast from Saturn.
-    val cw = size.width
-    val ch = size.height
-    val shell = androidx.compose.ui.graphics.Path().apply {
-        moveTo(cw * .19f, ch * .18f)
-        cubicTo(cw * .28f, ch * .10f, cw * .72f, ch * .10f, cw * .81f, ch * .18f)
-        lineTo(cw * .94f, ch * .48f)
-        cubicTo(cw * .98f, ch * .59f, cw * .91f, ch * .70f, cw * .82f, ch * .68f)
-        lineTo(cw * .66f, ch * .62f)
-        cubicTo(cw * .61f, ch * .60f, cw * .60f, ch * .70f, cw * .57f, ch * .86f)
-        cubicTo(cw * .55f, ch * .96f, cw * .45f, ch * .96f, cw * .43f, ch * .86f)
-        cubicTo(cw * .40f, ch * .70f, cw * .39f, ch * .60f, cw * .34f, ch * .62f)
-        lineTo(cw * .18f, ch * .68f)
-        cubicTo(cw * .09f, ch * .70f, cw * .02f, ch * .59f, cw * .06f, ch * .48f)
-        close()
-    }
-    drawPath(shell, Color(0xFF343B50))
-    drawPath(shell, Color.White.copy(alpha = .24f), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3f))
-
-    // Recess around the D-pad and action-button cluster.
-    drawCircle(Color(0xFF262C3D), radius = ch * .18f, center = androidx.compose.ui.geometry.Offset(cw * .24f, ch * .50f))
-    drawCircle(Color(0xFF262C3D), radius = ch * .18f, center = androidx.compose.ui.geometry.Offset(cw * .75f, ch * .50f))
-
-    // VMU / LCD cartridge bay at the top centre of a Dreamcast controller.
-    drawRoundRect(
-        Color(0xFF1B2230),
-        androidx.compose.ui.geometry.Offset(cw * .425f, ch * .205f),
-        androidx.compose.ui.geometry.Size(cw * .15f, ch * .255f),
-        androidx.compose.ui.geometry.CornerRadius(9f),
-    )
-    drawRoundRect(
-        Color(0xFF97A5B7),
-        androidx.compose.ui.geometry.Offset(cw * .448f, ch * .235f),
-        androidx.compose.ui.geometry.Size(cw * .104f, ch * .145f),
-        androidx.compose.ui.geometry.CornerRadius(3f),
-    )
-    drawRect(
-        Color(0xFF526577),
-        topLeft = androidx.compose.ui.geometry.Offset(cw * .463f, ch * .258f),
-        size = androidx.compose.ui.geometry.Size(cw * .074f, ch * .018f),
-    )
-    drawCircle(
-        Color(0xFFCFD5DC),
-        radius = ch * .008f,
-        center = androidx.compose.ui.geometry.Offset(cw * .50f, ch * .414f),
-    )
-})
+    PadButton("L", "L", x = .22f, y = .10f, w = .14f, h = .07f, wOfWidth = true, shape = padRect(8), color = Color(0xFF47435F)),
+    PadButton("R", "R", x = .78f, y = .10f, w = .14f, h = .07f, wOfWidth = true, shape = padRect(8), color = Color(0xFF47435F)),
+    PadButton("Up", icon = Icons.Default.KeyboardArrowUp, x = .183f, y = .475f, w = .065f, h = .065f, shape = padRect(2), color = Color(0xFF343B50)),
+    PadButton("Down", icon = Icons.Default.KeyboardArrowDown, x = .183f, y = .581f, w = .065f, h = .065f, shape = padRect(2), color = Color(0xFF343B50)),
+    PadButton("Left", icon = Icons.AutoMirrored.Filled.KeyboardArrowLeft, x = .130f, y = .528f, w = .065f, h = .065f, shape = padRect(2), color = Color(0xFF343B50)),
+    PadButton("Right", icon = Icons.AutoMirrored.Filled.KeyboardArrowRight, x = .236f, y = .528f, w = .065f, h = .065f, shape = padRect(2), color = Color(0xFF343B50)),
+    PadButton("Start", "▶", x = .498f, y = .704f, w = .09f, h = .08f, shape = padRect(5), color = Color(0xFF6E58D8)),
+    PadButton("X", "X", x = .730f, y = .397f, w = .095f, h = .095f, color = Color(0xFFCEB45E)),
+    PadButton("Y", "Y", x = .814f, y = .318f, w = .095f, h = .095f, color = Color(0xFF3C8D83)),
+    PadButton("A", "A", x = .814f, y = .479f, w = .095f, h = .095f, color = Color(0xFFBD625A)),
+    PadButton("B", "B", x = .909f, y = .397f, w = .095f, h = .095f, color = Color(0xFF6385C4)),
+), aspectRatio = 263f / 267f, artwork = { rememberAppIconPainter(R.drawable.ic_launcher_foreground) })
 

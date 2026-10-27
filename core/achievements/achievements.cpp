@@ -44,6 +44,21 @@
 
 namespace achievements
 {
+static std::mutex overlayEventsMutex;
+static std::string overlayEvents;
+static void overlayEvent(const std::string& kind, std::string title, std::string text = "", unsigned points = 0, std::string image = "") {
+	for (auto *field : {&title, &text, &image})
+		for (char& c : *field) if (c == '\t' || c == '\n' || c == '\r') c = ' ';
+	std::lock_guard<std::mutex> lock(overlayEventsMutex);
+	if (overlayEvents.size() > 65536) overlayEvents.clear();
+	overlayEvents += kind + "\t" + title + "\t" + text + "\t" + std::to_string(points) + "\t" + image.c_str() + "\n";
+}
+std::string takeOverlayEvents() {
+	std::lock_guard<std::mutex> lock(overlayEventsMutex);
+	std::string events;
+	events.swap(overlayEvents);
+	return events;
+}
 
 static std::mutex httpRequestHandlerMutex;
 static HttpRequestHandler httpRequestHandler;
@@ -652,12 +667,14 @@ void Achievements::clientServerCall(const rc_api_request_t *request, rc_client_s
 
 static void handleServerError(const rc_client_server_error_t* error)
 {
+	overlayEvent("error", error->api, error->error_message);
 	WARN_LOG(COMMON, "RA server error: %s - %s", error->api, error->error_message);
 	notifier.notify(Notification::Error, "", error->api, error->error_message);
 }
 
 static void notifyError(const std::string& msg)
 {
+	overlayEvent("error", "RetroAchievements", msg);
 	WARN_LOG(COMMON, "RA error: %s", msg.c_str());
 	notifier.notify(Notification::Error, "", msg);
 }
@@ -752,6 +769,7 @@ void Achievements::handleUnlockEvent(const rc_client_event_t *event)
 	std::string description(cheevo->description);
 	std::string url(512, '\0');
 	int rc = rc_client_achievement_get_image_url(cheevo, cheevo->state, url.data(), url.size());
+	overlayEvent("unlocked", title, description, cheevo->points, rc == RC_OK ? url.c_str() : "");
 	if (rc == RC_OK)
 	{
 		asyncTask([this, url, title, description]() {
@@ -795,6 +813,7 @@ void Achievements::handleAchievementChallengeIndicatorHideEvent(const rc_client_
 void Achievements::handleLeaderboardStarted(const rc_client_event_t *event)
 {
 	const rc_client_leaderboard_t *leaderboard = event->leaderboard;
+	overlayEvent("lbstart", leaderboard->title, leaderboard->description);
 	INFO_LOG(COMMON, "RA: Leaderboard started: %s", leaderboard->title);
 	std::string text = strprintf(i18n::T("Leaderboard %s started"), leaderboard->title);
 	notifier.notify(Notification::Unlocked, "", text, leaderboard->description);
@@ -802,6 +821,7 @@ void Achievements::handleLeaderboardStarted(const rc_client_event_t *event)
 void Achievements::handleLeaderboardFailed(const rc_client_event_t *event)
 {
 	const rc_client_leaderboard_t *leaderboard = event->leaderboard;
+	overlayEvent("lbfail", leaderboard->title, leaderboard->description);
 	INFO_LOG(COMMON, "RA: Leaderboard failed: %s", leaderboard->title);
 	std::string text = strprintf(i18n::T("Leaderboard %s failed"), leaderboard->title);
 	notifier.notify(Notification::Unlocked, "", text, leaderboard->description);
@@ -809,6 +829,7 @@ void Achievements::handleLeaderboardFailed(const rc_client_event_t *event)
 void Achievements::handleLeaderboardSubmitted(const rc_client_event_t *event)
 {
 	const rc_client_leaderboard_t *leaderboard = event->leaderboard;
+	overlayEvent("lbsubmit", leaderboard->title, leaderboard->description);
 	INFO_LOG(COMMON, "RA: Leaderboard submitted: %s", leaderboard->title);
 	std::string text = strprintf(i18n::T("Leaderboard %s submitted"), leaderboard->title);
 	notifier.notify(Notification::Unlocked, "", text, leaderboard->description);
@@ -835,6 +856,7 @@ void Achievements::handleUpdateLeaderboardTracker(const rc_client_event_t *event
 void Achievements::handleGameCompleted(const rc_client_event_t *event)
 {
 	const rc_client_game_t* game = rc_client_get_game_info(rc_client);
+	overlayEvent("completed", game->title);
 	std::string text1 = strprintf(rc_client_get_hardcore_enabled(rc_client) ? i18n::T("Mastered %s") : i18n::T("Completed %s"), game->title);
 	rc_client_user_game_summary_t summary;
 	rc_client_get_user_game_summary(rc_client, &summary);

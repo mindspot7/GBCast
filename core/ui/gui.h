@@ -21,6 +21,7 @@
 
 #include <string>
 #include <functional>
+#include <vector>
 
 void gui_init();
 void gui_updateStyle();
@@ -55,6 +56,8 @@ void gui_togglePause();
 std::string gui_getCurGameBoxartUrl();
 void gui_takeScreenshot();
 void gui_runOnUiThread(std::function<void()> function);
+std::string gui_takeOverlayMessage();
+void gui_captureScreenshot(std::vector<u8>& data);
 
 enum class GuiState {
 	Closed,

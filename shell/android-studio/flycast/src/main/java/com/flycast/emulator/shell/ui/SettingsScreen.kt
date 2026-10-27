@@ -39,6 +39,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,6 +55,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gbcast.emulator.R
 import com.flycast.emulator.shell.GBCastBridge
+import com.flycast.emulator.shell.DreamcastBios
+import com.flycast.emulator.shell.DisplayMode
 import com.flycast.emulator.shell.Storage
 import gb.frame.AboutCredit
 import gb.frame.AboutPage
@@ -65,7 +69,11 @@ import gb.frame.InfoRow
 import gb.frame.SettingsDivider
 import gb.frame.SettingsGroup
 import gb.frame.ToggleRow
+import gb.frame.SaveStateSettings
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import java.io.File
 
 enum class SettingsPage(val label: String, val icon: ImageVector) {
@@ -74,7 +82,7 @@ enum class SettingsPage(val label: String, val icon: ImageVector) {
     Audio("Audio", Icons.AutoMirrored.Filled.VolumeUp),
     Performance("Performance", Icons.Default.Speed),
     Controls("Controls", Icons.Default.SportsEsports),
-    Extras("Network", Icons.Default.Wifi),
+    Extras("Extras", Icons.Default.Info),
     About("About", Icons.Default.Info),
 }
 
@@ -83,6 +91,10 @@ private class Cfg {
     fun bool(section: String, name: String) = GBCastBridge.bool(section, name)
     fun toggle(section: String, name: String) {
         GBCastBridge.setBool(section, name, !bool(section, name))
+        tick++
+    }
+    fun setBool(section: String, name: String, value: Boolean) {
+        check(GBCastBridge.setBool(section, name, value)) { "Unsupported setting: $name" }
         tick++
     }
     fun int(section: String, name: String) = GBCastBridge.int(section, name)
@@ -99,6 +111,8 @@ fun SettingsScreen(onBack: () -> Unit, toast: (String) -> Unit, page: SettingsPa
     val current = page ?: SettingsPage.System
     val cfg = remember { Cfg() }
     val tick = cfg.tick
+    val scope = rememberCoroutineScope()
+    var importingBios by remember { mutableStateOf(false) }
     val backFocus = remember { FocusRequester() }
     val view = LocalView.current
     LaunchedEffect(current) {
@@ -119,6 +133,27 @@ fun SettingsScreen(onBack: () -> Unit, toast: (String) -> Unit, page: SettingsPa
         if (uri != null) {
             val saved = Storage.importFile(uri, GBCastBridge.dataDir())
             toast(if (saved != null) "Copied ${File(saved).name} into the GBCast data folder" else "Could not copy that file")
+        }
+    }
+    val dreamcastBiosPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        if (uris.isNotEmpty() && !importingBios) scope.launch {
+            importingBios = true
+            try {
+                val results = withContext(Dispatchers.IO) {
+                    uris.map { uri ->
+                        runCatching {
+                            val name = ctx.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
+                                if (it.moveToFirst()) it.getString(0) else null
+                            } ?: error("Could not read filename")
+                            requireNotNull(ctx.contentResolver.openInputStream(uri)).use { input ->
+                                DreamcastBios.install(GBCastBridge.dataDir(), name, input)
+                            }
+                        }.fold({ "Imported $it" }, { it.message ?: "Could not import BIOS" })
+                    }
+                }
+                cfg.tick++
+                toast(results.joinToString("\n"))
+            } finally { importingBios = false }
         }
     }
 
@@ -145,7 +180,9 @@ fun SettingsScreen(onBack: () -> Unit, toast: (String) -> Unit, page: SettingsPa
         ) {
             Column(Modifier.widthIn(max = 760.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 when (current) {
-                    SettingsPage.System -> SystemPage(tick, cfg, { folderPicker.launch(null) }, { biosPicker.launch(arrayOf("*/*")) })
+                    SettingsPage.System -> SystemPage(tick, cfg, { folderPicker.launch(null) }, { biosPicker.launch(arrayOf("*/*")) }, importingBios) {
+                        if (!importingBios) dreamcastBiosPicker.launch(arrayOf("*/*"))
+                    }
                     SettingsPage.Video -> VideoPage(tick, cfg)
                     SettingsPage.Audio -> AudioPage(tick, cfg)
                     SettingsPage.Performance -> PerformancePage(tick, cfg)
@@ -171,6 +208,7 @@ fun SettingsScreen(onBack: () -> Unit, toast: (String) -> Unit, page: SettingsPa
                         credits = listOf(
                             AboutCredit("Flycast", "Emulation core for Dreamcast, Naomi, Naomi 2 and Atomiswave."),
                             AboutCredit("GBFrame", "Shared Android interface, settings, controls and menu components."),
+                            AboutCredit("libretro-database", "Offline Dreamcast cheat database by its contributors (CC BY-SA 4.0). License included in the APK assets."),
                             AboutCredit("GBCast", "Android frontend and integration with Flycast."),
                         ),
                         license = "See the GBCast repository LICENSE and Flycast's upstream license notices for the full terms that apply to each component.",
@@ -185,7 +223,7 @@ fun SettingsScreen(onBack: () -> Unit, toast: (String) -> Unit, page: SettingsPa
 }
 
 @Composable
-private fun SystemPage(tick: Int, cfg: Cfg, onFolder: () -> Unit, onBios: () -> Unit) {
+private fun SystemPage(tick: Int, cfg: Cfg, onFolder: () -> Unit, onBios: () -> Unit, importingBios: Boolean, onDreamcastBios: () -> Unit) {
     val dir = GBCastBridge.gamesDir()
     SettingsGroup("Paths", Icons.Default.Folder) {
         ActionRow(
@@ -199,15 +237,30 @@ private fun SystemPage(tick: Int, cfg: Cfg, onFolder: () -> Unit, onBios: () -> 
         SettingsDivider()
         ActionRow(
             Icons.Default.Memory,
-            "BIOS and data files",
-            if (GBCastBridge.biosPresent()) "dc_boot.bin is in the data folder" else "Copy dc_boot.bin and dc_flash.bin into the data folder",
+            "Arcade BIOS and other data files",
+            "Import other system files into the data folder",
             "Copy file",
             onBios,
-            warn = !GBCastBridge.biosPresent(),
         )
         SettingsDivider()
         InfoRow("GBCast data folder", GBCastBridge.dataDir().absolutePath)
     }
+    SettingsGroup("Dreamcast BIOS", Icons.Default.Memory) {
+        ActionRow(Icons.Default.Memory, "Import Dreamcast BIOS",
+            "Select both dc_boot.bin and dc_flash.bin together, or add the missing file separately.",
+            if (importingBios) "Importing…" else "Choose files", onDreamcastBios)
+        DreamcastBios.sizes.forEach { (name, size) ->
+            SettingsDivider()
+            val present = remember(tick, name) { DreamcastBios.present(GBCastBridge.dataDir(), name) }
+            InfoRow(name, "${size / 1024} KiB — ${if (present) "Installed" else "Missing"}")
+        }
+    }
+    SaveStateSettings(
+        autoSave = cfg.bool("config", "Dreamcast.AutoSaveState"),
+        autoLoad = cfg.bool("config", "Dreamcast.AutoLoadState"),
+        onAutoSave = { cfg.setBool("config", "Dreamcast.AutoSaveState", it) },
+        onAutoLoad = { cfg.setBool("config", "Dreamcast.AutoLoadState", it) },
+    )
     val region = indexOf(tick, intArrayOf(0, 1, 2, 3), cfg.int("config", "Dreamcast.Region"))
     val cable = indexOf(tick, intArrayOf(0, 2, 3), cfg.int("config", "Dreamcast.Cable"))
     val broadcast = indexOf(tick, intArrayOf(0, 1, 2, 3, 4), cfg.int("config", "Dreamcast.Broadcast"))
@@ -249,9 +302,11 @@ private fun VideoPage(tick: Int, cfg: Cfg) {
             cfg.setInt("config", "rend.Resolution", resolutionValues[it])
         }
         SettingsDivider()
-        ToggleRow(Icons.Default.Tv, "Widescreen", "rend.WideScreen", cfg.bool("config", "rend.WideScreen")) { cfg.toggle("config", "rend.WideScreen") }
-        SettingsDivider()
-        ToggleRow(Icons.Default.Tv, "Super widescreen", "rend.SuperWideScreen", cfg.bool("config", "rend.SuperWideScreen")) { cfg.toggle("config", "rend.SuperWideScreen") }
+        ChoiceRow("Display mode", "Fullscreen stretches the picture; Super widescreen expands the view to the screen ratio.",
+            DisplayMode.entries.map { it.label }, DisplayMode.current(cfg::bool).ordinal) { selected ->
+            DisplayMode.entries[selected].apply(cfg::setBool)
+            cfg.setInt("config", "rend.ScreenStretching", 100)
+        }
         SettingsDivider()
         ToggleRow(Icons.Default.Tune, "Widescreen game hacks", "rend.WidescreenGameHacks", cfg.bool("config", "rend.WidescreenGameHacks")) { cfg.toggle("config", "rend.WidescreenGameHacks") }
         SettingsDivider()
@@ -259,14 +314,18 @@ private fun VideoPage(tick: Int, cfg: Cfg) {
         SettingsDivider()
         ToggleRow(Icons.Default.Tv, "Integer scale", "rend.IntegerScale", cfg.bool("config", "rend.IntegerScale")) { cfg.toggle("config", "rend.IntegerScale") }
         SettingsDivider()
-        ToggleRow(Icons.Default.Info, "Show FPS", "rend.ShowFPS", cfg.bool("config", "rend.ShowFPS")) { cfg.toggle("config", "rend.ShowFPS") }
-        SettingsDivider()
         ChoiceRow("Texture filtering", null, listOf("Default", "Nearest", "Linear"), cfg.int("config", "rend.TextureFiltering").coerceIn(0, 2)) {
             cfg.setInt("config", "rend.TextureFiltering", it)
         }
         SettingsDivider()
         ChoiceRow("Anisotropic", null, listOf("Off", "2x", "4x", "8x", "16x"), indexOf(tick, intArrayOf(1, 2, 4, 8, 16), cfg.int("config", "rend.AnisotropicFiltering"))) {
             cfg.setInt("config", "rend.AnisotropicFiltering", intArrayOf(1, 2, 4, 8, 16)[it])
+        }
+    }
+    SettingsGroup("Overlays", Icons.Default.Info) {
+        GBCastOverlayOptions.items().forEachIndexed { index, (key, label, enabled) ->
+            if (index > 0) SettingsDivider()
+            ToggleRow(Icons.Default.Info, label, null, enabled) { GBCastOverlayOptions.set(key, it) }
         }
     }
     SettingsGroup("Accuracy", null) {
@@ -323,11 +382,7 @@ private fun PerformancePage(tick: Int, cfg: Cfg) {
 
 @Composable
 private fun ExtrasPage(tick: Int, cfg: Cfg) {
-    SettingsGroup("Saves", null) {
-        ToggleRow(Icons.Default.Memory, "Auto load state", "Dreamcast.AutoLoadState", cfg.bool("config", "Dreamcast.AutoLoadState")) { cfg.toggle("config", "Dreamcast.AutoLoadState") }
-        SettingsDivider()
-        ToggleRow(Icons.Default.Memory, "Auto save state", "Dreamcast.AutoSaveState", cfg.bool("config", "Dreamcast.AutoSaveState")) { cfg.toggle("config", "Dreamcast.AutoSaveState") }
-        SettingsDivider()
+    SettingsGroup("Arcade", null) {
         ToggleRow(Icons.Default.Tune, "Force free play", "Naomi/Atomiswave", cfg.bool("config", "ForceFreePlay")) { cfg.toggle("config", "ForceFreePlay") }
     }
     SettingsGroup("Network and achievements", Icons.Default.Wifi) {

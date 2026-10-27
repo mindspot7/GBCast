@@ -752,7 +752,14 @@ void Emulator::unloadGame()
 #ifndef LIBRETRO
 		if (state == Loaded && config::AutoSaveState && !settings.content.path.empty()
 				&& !settings.naomi.multiboard && !config::GGPOEnable && !naomiNetworkSupported())
+		{
+			const int manualSlot = config::SavestateSlot;
+#ifdef __ANDROID__
+			config::SavestateSlot = 5;
+#endif
 			gui_saveState(false);
+			config::SavestateSlot = manualSlot;
+		}
 #endif
 		try {
 			dc_reset(true);

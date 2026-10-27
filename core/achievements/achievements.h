@@ -64,6 +64,7 @@ struct Achievement
 };
 
 bool init();
+std::string takeOverlayEvents();
 void term();
 std::future<void> login(const char *username, const char *password);
 void loginWithToken(const char *username, const char *token);

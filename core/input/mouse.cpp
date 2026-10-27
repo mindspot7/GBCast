@@ -19,6 +19,9 @@
 #include "mouse.h"
 #include "cfg/option.h"
 #include "ui/gui.h"
+#ifdef __ANDROID__
+#include "rend/transform_matrix.h"
+#endif
 
 // Mouse buttons
 // bit 0: Button C
@@ -120,6 +123,14 @@ void SetMousePosition(int x, int y, int width, int height, u32 mouseId)
 		return;
 	mo_width = width;
 	mo_height = height;
+#ifdef __ANDROID__
+	const auto video = getPresentationViewport(width, height, getOutputFramebufferAspectRatio(), config::Rotate90);
+	x -= video.x;
+	y -= video.y;
+	width = video.width;
+	height = video.height;
+	if (width <= 0 || height <= 0) return;
+#endif
 
 	if (config::Rotate90)
 	{

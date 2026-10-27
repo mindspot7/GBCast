@@ -16,6 +16,7 @@
  */
 #include "osd.h"
 #include "stdclass.h"
+#include "transform_matrix.h"
 #ifdef LIBRETRO
 #include "vmu_xhair.h"
 #endif
@@ -87,10 +88,12 @@ std::pair<float, float> getCrosshairPosition(int playerNum)
 		fx = t;
 		std::swap(width, height);
 	}
-	float scale = height / settings.display.height;
+	const auto video = getPresentationViewport(settings.display.width, settings.display.height, getOutputFramebufferAspectRatio(), config::Rotate90);
+	float scale = height / video.height;
 	fy /= scale;
 	scale /= config::ScreenStretching / 100.f;
-	fx = fx / scale + (settings.display.width - width / scale) / 2.f;
+	fx = fx / scale + (video.width - width / scale) / 2.f + video.x;
+	fy += video.y;
 
 	return std::make_pair(fx, fy);
 }

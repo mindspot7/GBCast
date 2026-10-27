@@ -372,9 +372,7 @@ public abstract class BaseGLActivity extends ComponentActivity implements Activi
             }
             if (keyCode == KeyEvent.KEYCODE_BACK) {
                 // A pad that emits B and Back for one press must not open the menu during gameplay.
-                if (com.flycast.emulator.shell.GbcastInput.consumePairedBack(event)
-                        && !com.flycast.emulator.shell.GbcastGameUi.getMenuOwnsKeys()
-                        && JNIdc.guiState() == 0)
+                if (com.flycast.emulator.shell.GbcastInput.consumePairedBack(event))
                     return true;
                 if (event.getAction() == KeyEvent.ACTION_DOWN)
                     onBackKey();

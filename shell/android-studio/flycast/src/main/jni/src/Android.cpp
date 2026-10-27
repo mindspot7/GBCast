@@ -28,6 +28,7 @@
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
+#include <future>
 #include <cstring>
 #include <jni.h>
 #include <unistd.h>
@@ -261,10 +262,11 @@ extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_setupMic(J
     stopRecordingMid = env->GetMethodID(env->GetObjectClass(sipemu),"stopRecording","()V");
 }
 
+static std::vector<u8> autoSavePreview;
 static void *savestateThreadFunc(void *)
 {
 	// Keep Android auto-save separate from the five numbered/manual slots exposed by GBFrame.
-	dc_savestate(5);
+	dc_savestate(5, autoSavePreview.empty() ? nullptr : autoSavePreview.data(), autoSavePreview.size());
 	return nullptr;
 }
 
@@ -272,6 +274,19 @@ static cThread savestateThread(savestateThreadFunc, nullptr, "Flycast-save");
 
 extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_pause(JNIEnv *env,jobject obj)
 {
+	if (config::AutoSaveState && !settings.content.path.empty() && !config::GGPOEnable) {
+		savestateThread.WaitToEnd();
+		autoSavePreview.clear();
+		auto completion = std::make_shared<std::promise<std::vector<u8>>>();
+		auto result = completion->get_future();
+		gui_runOnUiThread([completion]() {
+			std::vector<u8> png;
+			try { gui_captureScreenshot(png); } catch (...) { }
+			completion->set_value(std::move(png));
+		});
+		if (result.wait_for(std::chrono::seconds(2)) == std::future_status::ready)
+			autoSavePreview = result.get();
+	}
 	if (config::GGPOEnable)
 	{
 		stopEmu();
@@ -293,7 +308,8 @@ extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_resume(JNI
     {
     	game_started = false;
 		savestateThread.WaitToEnd();
-        emu.start();
+        // An intentional quick-menu pause must survive background/foreground transitions.
+        if (gui_state != GuiState::Pause) emu.start();
     }
 }
 
@@ -303,11 +319,11 @@ extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_stop(JNIEn
 {
 	stopEmu();
 	savestateThread.WaitToEnd();
-	const int manualSlot = config::SavestateSlot;
-	if (config::AutoSaveState)
-		config::SavestateSlot = 5;
+	// onPause already saved slot 5 (with its captured preview); do not overwrite it from a non-render thread.
+	const bool autoSave = config::AutoSaveState;
+	config::AutoSaveState = false;
 	gui_stop_game();
-	config::SavestateSlot = manualSlot;
+	config::AutoSaveState = autoSave;
 	input_term();
 }
 

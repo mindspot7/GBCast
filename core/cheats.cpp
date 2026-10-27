@@ -21,6 +21,7 @@
     along with Flycast.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "cheats.h"
+#include <algorithm>
 #include "hw/sh4/sh4_mem.h"
 #include "reios/reios.h"
 #include "cfg/cfg.h"
@@ -400,7 +401,7 @@ void CheatManager::removeCheat(size_t index)
 #endif
 }
 
-void CheatManager::loadCheatFile(const std::string& filename)
+void CheatManager::loadCheatFile(const std::string& filename, bool append)
 {
 #ifndef LIBRETRO
 	try {
@@ -425,8 +426,8 @@ void CheatManager::loadCheatFile(const std::string& filename)
 	delete cheatfile;
 
 	int count = cfg.getInt("", "cheats", 0);
-	cheats.clear();
-	for (int i = 0; count == 0 || i < count; i++)
+	if (!append) cheats.clear();
+	for (int i = 0; i < 4096 && (count == 0 || i < count); i++)
 	{
 		std::string prefix = "cheat" + std::to_string(i) + "_";
 		Cheat cheat{};
@@ -440,7 +441,9 @@ void CheatManager::loadCheatFile(const std::string& filename)
 			continue;
 		}
 		cheat.type = (Cheat::Type)cfg.getInt("", prefix + "cheat_type", (int)Cheat::Type::disabled);
-		cheat.size = 1 << cfg.getInt("", prefix + "memory_search_size", 0);
+		const int memorySize = cfg.getInt("", prefix + "memory_search_size", 0);
+		if (memorySize < 0 || memorySize > 5) continue;
+		cheat.size = 1u << memorySize;
 		cheat.value = cfg.getInt("", prefix + "value", cheat.value);
 		cheat.repeatCount = cfg.getInt("", prefix + "repeat_count", cheat.repeatCount);
 		cheat.repeatValueIncrement = cfg.getInt("", prefix + "repeat_add_to_value", cheat.repeatValueIncrement);
@@ -453,14 +456,48 @@ void CheatManager::loadCheatFile(const std::string& filename)
 			continue;
 		}
 		cheat.valueMask = cfg.getInt("", prefix + "address_bit_position", 0);
-		if (cheat.type != Cheat::Type::disabled)
-			cheats.push_back(cheat);
+		if (append) {
+			// Database imports are opt-in, little-endian Dreamcast RAM operations only.
+			if (cfg.getInt("", prefix + "handler", 1) != 1 || cfg.getBool("", prefix + "big_endian", false)
+					|| cheat.size < 8 || cheat.size > 32 || cheat.type <= Cheat::Type::disabled || cheat.type > Cheat::Type::copy
+					|| cheat.repeatCount == 0 || cheat.repeatCount > 4096
+					|| (u64)cheat.address + (u64)(cheat.repeatCount - 1) * cheat.repeatAddressIncrement + cheat.size / 8 > RAM_SIZE
+					|| (cheat.type == Cheat::Type::copy && (u64)cheat.destAddress + cheat.repeatCount > RAM_SIZE)) continue;
+			cheat.enabled = false;
+			const auto same = [&cheat](const Cheat& other) {
+				return !other.builtIn && other.type == cheat.type && other.address == cheat.address && other.value == cheat.value
+					&& other.size == cheat.size && other.repeatCount == cheat.repeatCount && other.repeatValueIncrement == cheat.repeatValueIncrement
+					&& other.repeatAddressIncrement == cheat.repeatAddressIncrement && other.destAddress == cheat.destAddress && other.valueMask == cheat.valueMask;
+			};
+			if (std::any_of(cheats.begin(), cheats.end(), same)) continue;
+		}
+		if (cheat.type != Cheat::Type::disabled) cheats.push_back(cheat);
 	}
 	setActive(!cheats.empty());
 	INFO_LOG(COMMON, "%d cheats loaded", (int)cheats.size());
-	if (!cheats.empty())
+	if (!append && !cheats.empty())
 		config::saveStr("cheats", gameId, filename);
 #endif
+}
+
+size_t CheatManager::importCheatFile(const std::string& filename)
+{
+	const auto previous = cheats;
+	const auto previousPath = config::loadStr("cheats", gameId);
+	try {
+		loadCheatFile(filename, true);
+		const size_t added = cheats.size() - previous.size();
+		if (added != 0) {
+			const std::string destination = previousPath.empty() ? get_game_save_prefix() + ".cht" : previousPath;
+			saveCheatFile(destination);
+			config::saveStr("cheats", gameId, destination);
+		}
+		return added;
+	} catch (...) {
+		cheats = previous;
+		setActive(!cheats.empty());
+		throw;
+	}
 }
 
 void CheatManager::reset(const std::string& gameId)

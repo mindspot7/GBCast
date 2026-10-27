@@ -80,7 +80,8 @@ public:
 	bool cheatBuiltIn(size_t index) const { return index < cheats.size() && cheats[index].builtIn; }
 	void enableCheat(size_t index, bool enabled) { cheats[index].enabled = enabled; }
 	void removeCheat(size_t index);
-	void loadCheatFile(const std::string& filename);
+	void loadCheatFile(const std::string& filename, bool append = false);
+	size_t importCheatFile(const std::string& filename);
 	void saveCheatFile(const std::string& filename);
 	// Returns true if using 16:9 anamorphic screen ratio
 	bool isWidescreen() const { return widescreen_cheat != nullptr; }

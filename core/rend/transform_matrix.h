@@ -94,4 +94,6 @@ inline static float getDCFramebufferAspectRatio() {
 }
 
 void getWindowboxDimensions(int outwidth, int outheight, float renderAR, int& dx, int& dy, bool rotate);
+struct PresentationViewport { int x, y, width, height; };
+PresentationViewport getPresentationViewport(int width, int height, float aspectRatio, bool rotate);
 void getVideoShift(float& x, float& y);

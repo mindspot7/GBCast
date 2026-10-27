@@ -8,13 +8,20 @@
 #include "stdclass.h"
 #include "ui/gui.h"
 #include "jni_util.h"
+#include "hw/pvr/Renderer_if.h"
+#include "hw/pvr/pvr_regs.h"
+#include "rend/transform_matrix.h"
+#include "wsi/context.h"
 
+#include <algorithm>
 #include <atomic>
 #include <climits>
 #include <mutex>
 #include <string>
 #include <sstream>
 #include <unordered_map>
+#include <future>
+#include <chrono>
 
 // GBCast reads and writes Flycast's real config::Option objects. Unknown keys are ignored.
 
@@ -101,6 +108,8 @@ struct IntOpt {
 };
 
 static bool getWide() { return config::Widescreen; }
+static bool getStretchToWindow() { return config::StretchToWindow; }
+static void setStretchToWindow(bool v) { config::StretchToWindow = v; }
 static void setWide(bool v) { config::Widescreen = v; }
 static bool getSuperWide() { return config::SuperWidescreen; }
 static void setSuperWide(bool v) { config::SuperWidescreen = v; }
@@ -166,6 +175,7 @@ static bool getCrash() { return config::UploadCrashLogs; }
 static void setCrash(bool v) { config::UploadCrashLogs = v; }
 
 static const BoolOpt kBools[] = {
+	{"config", "rend.StretchToWindow", getStretchToWindow, setStretchToWindow},
 	{"config", "rend.WideScreen", getWide, setWide},
 	{"config", "rend.SuperWideScreen", getSuperWide, setSuperWide},
 	{"config", "rend.ShowFPS", getFps, setFps},
@@ -229,7 +239,11 @@ static void setSkip(int v) { config::SkipFrame = v; }
 static int getAutoSkip() { return config::AutoSkipFrame; }
 static void setAutoSkip(int v) { config::AutoSkipFrame = v; }
 
+static int getScreenStretching() { return config::ScreenStretching; }
+static void setScreenStretching(int v) { config::ScreenStretching = std::clamp(v, 100, 250); }
+
 static const IntOpt kInts[] = {
+	{"config", "rend.ScreenStretching", getScreenStretching, setScreenStretching},
 	{"config", "rend.Resolution", getRes, setRes},
 	{"config", "rend.TextureFiltering", getFilter, setFilter},
 	{"config", "rend.AnisotropicFiltering", getAniso, setAniso},
@@ -343,12 +357,14 @@ extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_guiToggleP
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_restartGame(JNIEnv *, jclass) {
+	gui_runOnUiThread([]() {
 	std::string path = settings.content.path;
 	if (gui_state == GuiState::Pause)
 		gui_setState(GuiState::Closed);
 	gui_stop_game();
 	if (!path.empty())
 		gui_start_game(path);
+	});
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_setFastForwardMode(JNIEnv *, jclass, jboolean enabled) {
@@ -356,13 +372,74 @@ extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_setFastFor
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_saveCurrentSlot(JNIEnv *, jclass) {
-	const bool running = gui_state == GuiState::Closed;
-	gui_saveState(running, false);
+	const int slot = config::SavestateSlot;
+	gui_runOnUiThread([slot]() {
+		const int previous = config::SavestateSlot;
+		config::SavestateSlot = slot;
+		gui_saveState(gui_state == GuiState::Closed, false);
+		config::SavestateSlot = previous;
+	});
+}
+
+extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_saveSlotWithPreview(JNIEnv *env, jclass, jint slot) {
+	if (slot < 0 || slot > 5)
+		return env->NewStringUTF("Invalid save slot");
+	auto completion = std::make_shared<std::promise<std::string>>();
+	auto result = completion->get_future();
+	// Renderer capture must run on the thread owning the GL/Vulkan context, never the Android UI thread.
+	gui_runOnUiThread([slot, completion]() {
+		if (!dc_savestateAllowed() || settings.raHardcoreMode) {
+			completion->set_value("Save states are unavailable for this session");
+			return;
+		}
+		const int previous = config::SavestateSlot;
+		try {
+			config::SavestateSlot = slot;
+			gui_saveState(gui_state == GuiState::Closed, false);
+			std::vector<u8> preview;
+			dc_getStateScreenshot(slot, preview);
+			completion->set_value(preview.empty() ? "State saved, but a screenshot could not be captured" : "");
+		} catch (const std::exception& error) {
+			completion->set_value(error.what());
+		}
+		config::SavestateSlot = previous;
+	});
+	if (result.wait_for(std::chrono::seconds(15)) != std::future_status::ready)
+		return env->NewStringUTF("Saving is taking longer than expected");
+	const std::string message = result.get();
+	return message.empty() ? nullptr : env->NewStringUTF(message.c_str());
 }
 
 extern "C" JNIEXPORT jlong JNICALL Java_com_flycast_emulator_emu_JNIdc_stateTimestamp(JNIEnv *, jclass, jint slot) {
 	if (slot < 0 || slot > 5) return 0;
 	return static_cast<jlong>(dc_getStateCreationDate(slot)) * 1000;
+}
+
+extern "C" JNIEXPORT jintArray JNICALL Java_com_flycast_emulator_emu_JNIdc_overlayStats(JNIEnv *env, jclass) {
+	const int height = config::RenderResolution > 0 ? static_cast<int>(config::RenderResolution) : 480;
+	jint values[] = {static_cast<jint>(FrameCount), static_cast<jint>(height * getOutputFramebufferAspectRatio()), height,
+		SPG_CONTROL.isPAL() ? 50 : 60, getRenderer(), settings.input.fastForwardMode ? 1 : 0};
+	jintArray result = env->NewIntArray(6);
+	if (result != nullptr) env->SetIntArrayRegion(result, 0, 6, values);
+	return result;
+}
+
+extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_overlayGpuName(JNIEnv *env, jclass) {
+	auto *context = GraphicsContext::Instance();
+	return env->NewStringUTF(context != nullptr ? context->getDriverName().c_str() : "");
+}
+
+extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_pollOverlayMessage(JNIEnv *env, jclass) {
+	const std::string message = gui_takeOverlayMessage();
+	return message.empty() ? nullptr : env->NewStringUTF(message.c_str());
+}
+
+extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_raOverlayEvents(JNIEnv *env, jclass) {
+#ifdef USE_RACHIEVEMENTS
+	return env->NewStringUTF(achievements::takeOverlayEvents().c_str());
+#else
+	return env->NewStringUTF("");
+#endif
 }
 
 extern "C" JNIEXPORT jbyteArray JNICALL Java_com_flycast_emulator_emu_JNIdc_stateThumbnail(JNIEnv *env, jclass, jint slot) {
@@ -388,6 +465,19 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_flycast_emulator_emu_JNIdc_loadCu
 	return JNI_TRUE;
 }
 
+extern "C" JNIEXPORT jboolean JNICALL Java_com_flycast_emulator_emu_JNIdc_loadStateSlot(JNIEnv *, jclass, jint slot) {
+	if (slot < 0 || slot > 5 || settings.raHardcoreMode || !dc_savestateAllowed()
+			|| (gui_state != GuiState::Closed && gui_state != GuiState::Pause)) return JNI_FALSE;
+	gui_runOnUiThread([slot]() {
+		const int previous = config::SavestateSlot;
+		config::SavestateSlot = slot;
+		if (gui_state == GuiState::Pause) dc_loadstate(slot);
+		else gui_loadState(false);
+		config::SavestateSlot = previous;
+	});
+	return JNI_TRUE;
+}
+
 extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_insertDisk(JNIEnv *env, jclass, jstring path) {
 	try {
 		gdr::insertDisk(jstr(env, path));
@@ -401,6 +491,12 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_insertD
 
 extern "C" JNIEXPORT jint JNICALL Java_com_flycast_emulator_emu_JNIdc_cheatCount(JNIEnv *, jclass) {
 	return (jint)cheatManager.cheatCount();
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_com_flycast_emulator_emu_JNIdc_importCheatFile(JNIEnv *env, jclass, jstring path) {
+	if (settings.raHardcoreMode || settings.content.gameId.empty()) return -1;
+	try { return (jint)cheatManager.importCheatFile(jstr(env, path)); }
+	catch (const std::exception&) { return -1; }
 }
 
 extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_cheatDescription(JNIEnv *env, jclass, jint index) {

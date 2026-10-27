@@ -81,6 +81,7 @@ static bool error_msg_shown;
 static std::string osd_message;
 static u64 osd_message_end;
 static std::mutex osd_message_mutex;
+static std::string androidOverlayMessage;
 static void (*showOnScreenKeyboard)(bool show);
 static bool keysUpNextFrame[512];
 bool uiUserScaleUpdated;
@@ -515,6 +516,10 @@ static void savestate()
 	savestatePic.invalidate();
 }
 
+void gui_captureScreenshot(std::vector<u8>& data) {
+	getScreenshot(data, 640);
+}
+
 void cycleSaveStateSlot(int step)
 {
 	// Keep the core's legacy slot picker aligned with GBFrame's shared five-slot limit.
@@ -775,6 +780,14 @@ static void contentpath_warning_popup()
 
 void os_notify(const char *msg, int durationMs, const char *details)
 {
+#ifdef __ANDROID__
+	if (gui_state == GuiState::Closed || gui_state == GuiState::Pause) {
+		std::lock_guard<std::mutex> lock(osd_message_mutex);
+		androidOverlayMessage = msg;
+		if (details != nullptr && details[0] != '\0') androidOverlayMessage += std::string("\n") + details;
+		return;
+	}
+#endif
 	if (gui_state != GuiState::Closed && gui_state != GuiState::Pause)
 	{
 		std::lock_guard<std::mutex> _{osd_message_mutex};
@@ -784,6 +797,13 @@ void os_notify(const char *msg, int durationMs, const char *details)
 	else {
 		toast.show(msg, details != nullptr ? details : "", durationMs);
 	}
+}
+
+std::string gui_takeOverlayMessage() {
+	std::lock_guard<std::mutex> lock(osd_message_mutex);
+	std::string result;
+	result.swap(androidOverlayMessage);
+	return result;
 }
 
 static std::string get_notification()
@@ -1362,8 +1382,10 @@ void gui_display_ui()
 		gui_display_commands();
 		break;
 	case GuiState::Pause:
+#ifndef __ANDROID__
 		toast.draw();
 		drawPauseIcon();
+#endif
 		break;
 	case GuiState::Main:
 		//gui_display_demo();
@@ -1440,6 +1462,7 @@ void gui_draw_osd()
 	gui_newFrame();
 	ImGui::NewFrame();
 
+#ifndef __ANDROID__
 #ifdef USE_RACHIEVEMENTS
 	if (!achievements::notifier.draw())
 #endif
@@ -1463,6 +1486,7 @@ void gui_draw_osd()
 			}
 		}
 
+#endif
 	if (ggpo::active())
 	{
 		if (config::NetworkStats)

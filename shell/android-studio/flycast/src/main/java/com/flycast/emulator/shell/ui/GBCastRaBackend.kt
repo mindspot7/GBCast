@@ -48,6 +48,7 @@ object GBCastRaBackend : RaBackend {
     override fun pollEvents(): ByteArray {
         if (!initialized) return byteArrayOf()
         val events = mutableListOf<String>()
+        events += JNIdc.raOverlayEvents().orEmpty().lineSequence().filter { it.isNotBlank() }.toList()
         val loggedIn = JNIdc.raIsLoggedOn()
         val pending = JNIdc.raIsLoginPending()
         val error = JNIdc.raLoginError().orEmpty()

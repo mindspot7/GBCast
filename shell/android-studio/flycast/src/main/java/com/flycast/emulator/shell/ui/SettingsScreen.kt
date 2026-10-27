@@ -70,7 +70,10 @@ import gb.frame.InfoRow
 import gb.frame.SettingsDivider
 import gb.frame.SettingsGroup
 import gb.frame.ToggleRow
-import gb.frame.SaveStateSettings
+import gb.frame.SystemSettings
+import gb.frame.SystemFolderSetting
+import gb.frame.SystemBiosFolderSetting
+import gb.frame.SystemBiosFile
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -231,75 +234,59 @@ fun SettingsScreen(onBack: () -> Unit, toast: (String) -> Unit, page: SettingsPa
 
 @Composable
 private fun SystemPage(tick: Int, cfg: Cfg, onFolder: () -> Unit, onBios: () -> Unit, importingBios: Boolean, onDreamcastBios: () -> Unit) {
-    val dir = GBCastBridge.gamesDir()
-    SettingsGroup("Paths", Icons.Default.Folder) {
-        gb.frame.DataFolderControls(GBCastBridge.dataFolder)
-        SettingsDivider()
-        if (importingBios) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                CircularProgressIndicator()
-                Text("Importing BIOS and data files…")
-            }
-        }
-        ActionRow(
-            Icons.Default.Folder,
-            "Games folder",
-            if (dir.isBlank()) "Not set" else Storage.folderLabel(dir),
-            "Choose",
-            onFolder,
-            warn = dir.isBlank(),
-        )
-        SettingsDivider()
-        ActionRow(
-            Icons.Default.Memory,
-            "Bios folder",
-            "Copy BIOS and data files from a folder into the GBCast data folder, including subfolders.",
-            if (importingBios) "Importing…" else "Choose folder",
-            onBios,
-        )
-        SettingsDivider()
-        InfoRow("GBCast data folder", GBCastBridge.dataFolder.label)
-    }
-    SettingsGroup("Dreamcast BIOS", Icons.Default.Memory) {
-        ActionRow(Icons.Default.Memory, "Import Dreamcast BIOS",
-            "Select both dc_boot.bin and dc_flash.bin together, or add the missing file separately.",
-            if (importingBios) "Importing…" else "Choose files", onDreamcastBios)
-        DreamcastBios.sizes.forEach { (name, size) ->
-            SettingsDivider()
-            val present = remember(tick, name) { DreamcastBios.present(GBCastBridge.dataDir(), name) }
-            InfoRow(name, "${size / 1024} KiB — ${if (present) "Installed" else "Missing"}")
+    val biosFiles = remember(tick) {
+        DreamcastBios.sizes.keys.map { name ->
+            val present = DreamcastBios.present(GBCastBridge.dataDir(), name)
+            val actualName = if (name == "dc_boot.bin" && present && !gb.frame.DataFile(GBCastBridge.dataDir(), name).isFile) "$name.bak" else name
+            SystemBiosFile(actualName, present)
         }
     }
-    SaveStateSettings(
+    SystemSettings(
+        dataFolder = GBCastBridge.dataFolder,
+        gamesFolder = SystemFolderSetting(GBCastBridge.gamesDir().takeIf { it.isNotBlank() }?.let(Storage::folderLabel),
+            "Choose the folder containing your Dreamcast and arcade disc images.", onFolder),
+        biosFolder = SystemBiosFolderSetting(
+            path = if (GBCastBridge.dataFolder.folder != null || biosFiles.any { it.loaded }) GBCastBridge.dataFolder.displayPath(GBCastBridge.dataDir()) else null,
+            description = "Choose a folder containing dc_boot.bin, dc_flash.bin and any other required BIOS files.",
+            files = biosFiles, onChooseFolder = onBios, onChooseFiles = onDreamcastBios, busy = importingBios,
+        ),
         autoSave = cfg.bool("config", "Dreamcast.AutoSaveState"),
         autoLoad = cfg.bool("config", "Dreamcast.AutoLoadState"),
         onAutoSave = { cfg.setBool("config", "Dreamcast.AutoSaveState", it) },
         onAutoLoad = { cfg.setBool("config", "Dreamcast.AutoLoadState", it) },
+        hleBios = {
+            ToggleRow(Icons.Default.Tune, "HLE BIOS", "Use reios instead of dc_boot.bin when a game allows it.", cfg.bool("config", "UseReios")) {
+                cfg.toggle("config", "UseReios")
+            }
+        },
+        startupExtras = {
+            ToggleRow(Icons.Default.Speed, "Fast GD-ROM load", "Reduce disc loading time when supported by the game", cfg.bool("config", "FastGDRomLoad")) {
+                cfg.toggle("config", "FastGDRomLoad")
+            }
+        },
+        extraSettings = {
+            val region = indexOf(tick, intArrayOf(0, 1, 2, 3), cfg.int("config", "Dreamcast.Region"))
+            val cable = indexOf(tick, intArrayOf(0, 2, 3), cfg.int("config", "Dreamcast.Cable"))
+            val broadcast = indexOf(tick, intArrayOf(0, 1, 2, 3, 4), cfg.int("config", "Dreamcast.Broadcast"))
+            SettingsGroup("Dreamcast", Icons.Default.Tune) {
+                ChoiceRow("Region", "Used the next time a game boots", listOf("Japan", "USA", "Europe", "Default"), region) {
+                    cfg.setInt("config", "Dreamcast.Region", intArrayOf(0, 1, 2, 3)[it])
+                }
+                SettingsDivider()
+                ChoiceRow("Cable", "VGA, RGB or composite", listOf("VGA", "RGB", "TV"), cable) {
+                    cfg.setInt("config", "Dreamcast.Cable", intArrayOf(0, 2, 3)[it])
+                }
+                SettingsDivider()
+                ChoiceRow("Broadcast", null, listOf("NTSC", "PAL", "PAL-M", "PAL-N", "Default"), broadcast) {
+                    cfg.setInt("config", "Dreamcast.Broadcast", it)
+                }
+                SettingsDivider()
+                ToggleRow(Icons.Default.Memory, "32 MB RAM", "Dreamcast RAM mod. Arcade boards ignore this.", cfg.bool("config", "Dreamcast.RamMod32MB")) {
+                    cfg.toggle("config", "Dreamcast.RamMod32MB")
+                }
+            }
+        },
     )
-    val region = indexOf(tick, intArrayOf(0, 1, 2, 3), cfg.int("config", "Dreamcast.Region"))
-    val cable = indexOf(tick, intArrayOf(0, 2, 3), cfg.int("config", "Dreamcast.Cable"))
-    val broadcast = indexOf(tick, intArrayOf(0, 1, 2, 3, 4), cfg.int("config", "Dreamcast.Broadcast"))
-    SettingsGroup("Dreamcast", Icons.Default.Tune) {
-        ChoiceRow("Region", "Used the next time a game boots", listOf("Japan", "USA", "Europe", "Default"), region) {
-            cfg.setInt("config", "Dreamcast.Region", intArrayOf(0, 1, 2, 3)[it])
-        }
-        SettingsDivider()
-        ChoiceRow("Cable", "VGA, RGB or composite", listOf("VGA", "RGB", "TV"), cable) {
-            cfg.setInt("config", "Dreamcast.Cable", intArrayOf(0, 2, 3)[it])
-        }
-        SettingsDivider()
-        ChoiceRow("Broadcast", null, listOf("NTSC", "PAL", "PAL-M", "PAL-N", "Default"), broadcast) {
-            cfg.setInt("config", "Dreamcast.Broadcast", it)
-        }
-        SettingsDivider()
-        ToggleRow(Icons.Default.Memory, "32 MB RAM", "Dreamcast RAM mod. Arcade boards ignore this.", cfg.bool("config", "Dreamcast.RamMod32MB")) {
-            cfg.toggle("config", "Dreamcast.RamMod32MB")
-        }
-        SettingsDivider()
-        ToggleRow(Icons.Default.Tune, "HLE BIOS", "Use reios instead of dc_boot.bin when a game allows it.", cfg.bool("config", "UseReios")) {
-            cfg.toggle("config", "UseReios")
-        }
-    }
 }
 
 @Composable
@@ -386,8 +373,6 @@ private fun PerformancePage(tick: Int, cfg: Cfg) {
         ToggleRow(Icons.Default.Speed, "Threaded rendering", null, cfg.bool("config", "rend.ThreadedRendering")) { cfg.toggle("config", "rend.ThreadedRendering") }
         SettingsDivider()
         ToggleRow(Icons.Default.Speed, "Frame pacing", null, cfg.bool("config", "rend.FramePacing")) { cfg.toggle("config", "rend.FramePacing") }
-        SettingsDivider()
-        ToggleRow(Icons.Default.Speed, "Fast GD-ROM load", null, cfg.bool("config", "FastGDRomLoad")) { cfg.toggle("config", "FastGDRomLoad") }
         SettingsDivider()
         ChoiceRow("Auto frame skip", "pvr.AutoSkipFrame", listOf("Off", "Normal", "Max"), cfg.int("config", "pvr.AutoSkipFrame").coerceIn(0, 2)) {
             cfg.setInt("config", "pvr.AutoSkipFrame", it)

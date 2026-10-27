@@ -33,3 +33,13 @@
 - No new storage permissions. Uses ACTION_OPEN_DOCUMENT_TREE, persistent URI grants and ContentResolver descriptors; no MANAGE_EXTERNAL_STORAGE or guessed shared-storage paths.
 - Texture directory access uses the same native adapter; a real replacement texture pack was not supplied for visual testing.
 - Folder-change device test: used the Android picker to move from GBCastData to a fresh GBCastDirectCheck tree, reopened with the new tree, ran Check access, then selected the original GBCastData again. Existing states/covers and direct access survived; the temporary test tree was removed after verifying the restored selection.
+
+
+## Shared System layout - build 44
+
+- Uses GBFrame SystemSettings: Data (Data folder, Games folder, Bios folder), BIOS emulation/HLE, automatic save states, Loading Times, then Dreamcast-specific settings.
+- Folder rows show effective paths when configured; the BIOS row lists dc_boot.bin and dc_flash.bin separately as Loaded/Missing and supports the existing boot .bak alternative. Missing firmware is not labelled Loaded because HLE is available.
+- Removed duplicate Paths/Dreamcast BIOS groups and wizard paragraphs from System. The shared BIOS selection dialog offers folder import or individual files.
+- Fast GD-ROM load moved from the main Performance page into Loading Times. No unsupported Saturn Skip Engine controls were added to GBCast.
+- RG Rotate: verified the three Data rows, wrapped BIOS path and both Missing states (no Dreamcast BIOS installed), shared BIOS dialog/folder picker, HLE placement, Save states/Loading Times/Dreamcast order, and touch scrolling on 720x720.
+- Local app tests (18), shared tests (14), and app-ID checks passed. No storage permissions or installation IDs changed.

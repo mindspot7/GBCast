@@ -1,6 +1,6 @@
 package com.flycast.emulator.shell
 
-import java.io.File
+import gb.frame.DataFile as File
 import java.io.InputStream
 import java.util.Locale
 
@@ -8,11 +8,11 @@ import java.util.Locale
 object DreamcastBios {
     val sizes = linkedMapOf("dc_boot.bin" to 2 * 1024 * 1024, "dc_flash.bin" to 128 * 1024)
 
-    fun present(directory: File, name: String): Boolean =
+    fun present(directory: java.io.File, name: String): Boolean =
         File(directory, name).length() == sizes[name]?.toLong() ||
             (name == "dc_boot.bin" && File(directory, "$name.bak").length() == sizes[name]?.toLong())
 
-    fun install(directory: File, sourceName: String, input: InputStream): String {
+    fun install(directory: java.io.File, sourceName: String, input: InputStream): String {
         val name = sourceName.lowercase(Locale.ROOT)
         val expected = requireNotNull(sizes[name]) { "Choose dc_boot.bin and dc_flash.bin" }
         directory.mkdirs()

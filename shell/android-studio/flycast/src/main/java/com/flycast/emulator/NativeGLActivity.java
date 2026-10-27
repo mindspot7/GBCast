@@ -85,7 +85,6 @@ public final class NativeGLActivity extends BaseGLActivity {
                 && com.flycast.emulator.emu.JNIdc.guiState()
                 == com.flycast.emulator.shell.GbcastGameUi.CLOSED;
         super.onPause();
-        com.flycast.emulator.shell.GBCastBridge.syncDataFolder();
     }
 
     @Override

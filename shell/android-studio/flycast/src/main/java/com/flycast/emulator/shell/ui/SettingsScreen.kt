@@ -258,7 +258,7 @@ private fun SystemPage(tick: Int, cfg: Cfg, onFolder: () -> Unit, onBios: () -> 
             onBios,
         )
         SettingsDivider()
-        InfoRow("GBCast data folder", GBCastBridge.dataDir().absolutePath)
+        InfoRow("GBCast data folder", GBCastBridge.dataFolder.label)
     }
     SettingsGroup("Dreamcast BIOS", Icons.Default.Memory) {
         ActionRow(Icons.Default.Memory, "Import Dreamcast BIOS",

@@ -14,7 +14,7 @@ import gb.frame.OpenDisc
 import gb.frame.PlayTime
 import gb.frame.RetroAchievements
 import gb.frame.SaveData
-import java.io.File
+import gb.frame.DataFile as File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -36,17 +36,15 @@ object GBCastBridge {
     @JvmStatic
     fun prepareDataFolder(context: Context, home: String) {
         if (::dataFolder.isInitialized) return
-        File(home, "data/textures").mkdirs()
         dataFolder = gb.frame.AppDataFolder(context, "GBCast", mapOf(
             "data" to File(home, "data"),
             "covers" to File(context.filesDir, "gbcast/covers"),
         ), texturesRelativePath = "data/textures")
-        dataFolder.restoreAtStartup()
-        dataFolder.watch()
+        System.loadLibrary("flycast")
+        dataFolder.openAtStartup()
+        File(home, "data/textures").mkdirs()
     }
 
-    @JvmStatic
-    fun syncDataFolder() { if (::dataFolder.isInitialized) dataFolder.requestSync() }
 
     var disc: OpenDisc? = null
         private set

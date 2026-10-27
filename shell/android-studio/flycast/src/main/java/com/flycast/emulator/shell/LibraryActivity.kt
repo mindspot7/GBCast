@@ -49,10 +49,10 @@ class LibraryActivity : ComponentActivity() {
         setControllerContent {
             val error = startupError
             if (error != null) {
-                androidx.compose.material3.Text(
-                    "GBCast failed to initialize. Please send this message to support:\\n" +
-                        (error.message ?: error.javaClass.simpleName)
-                )
+                androidx.compose.foundation.layout.Column {
+                    androidx.compose.material3.Text(error.message ?: "Could not open data folder")
+                    gb.frame.DataFolderControls(GBCastBridge.dataFolder)
+                }
             } else if (ready) {
                 GBCastRoot(onQuit = ::quit)
             } else {

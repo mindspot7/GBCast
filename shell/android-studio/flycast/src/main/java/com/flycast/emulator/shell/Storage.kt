@@ -6,7 +6,7 @@ import android.provider.OpenableColumns
 import androidx.documentfile.provider.DocumentFile
 import gb.frame.OpenDisc
 import gb.frame.SafGames
-import java.io.File
+import gb.frame.DataFile as File
 import java.nio.file.Files
 
 /** Games folder through the Storage Access Framework, preferring direct descriptor-backed access. */
@@ -16,7 +16,7 @@ private object GamesFolder {
 
 object Storage : SafGames(GameIndex.extensions, { GamesFolder.path }) {
     /** Import a user-selected SAF tree; the native core requires real local data paths. */
-    fun importBiosFolder(uri: Uri, destination: File): Int {
+    fun importBiosFolder(uri: Uri, destination: java.io.File): Int {
         val root = requireNotNull(DocumentFile.fromTreeUri(app, uri)) { "Could not open BIOS folder" }
         var copied = 0
         fun copyDirectory(source: DocumentFile, target: File) {
@@ -44,7 +44,7 @@ object Storage : SafGames(GameIndex.extensions, { GamesFolder.path }) {
                 }
             }
         }
-        copyDirectory(root, destination)
+        copyDirectory(root, File(destination.path))
         return copied
     }
     var gamesDir: String
@@ -77,7 +77,7 @@ object Storage : SafGames(GameIndex.extensions, { GamesFolder.path }) {
         return if (ext == "chd" || ext == "iso") open(path, stageCopy = true) else null
     }
 
-    fun importFile(uri: Uri, destDir: File): String? {
+    fun importFile(uri: Uri, destDir: java.io.File): String? {
         destDir.mkdirs()
         val name = app.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
             if (c.moveToFirst()) c.getString(0) else null

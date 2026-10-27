@@ -73,15 +73,31 @@ public class TestDocumentsProvider extends DocumentsProvider {
     public Cursor queryChildDocuments(String parentDocumentId, String[] projection, String sortOrder)
             throws FileNotFoundException {
         MatrixCursor cursor = new MatrixCursor(projection != null ? projection : DOCUMENT_COLUMNS);
-        if (ROOT.equals(parentDocumentId)) {
-            includeDocument(cursor, DIRECTORY);
-            includeDocument(cursor, ROOT_FILE);
-        } else if (DIRECTORY.equals(parentDocumentId)) {
-            includeDocument(cursor, GAME_FILE);
-        } else {
-            throw new FileNotFoundException(parentDocumentId);
-        }
+        File directory = fileFor(parentDocumentId);
+        File[] children = directory.listFiles();
+        if (children == null) throw new FileNotFoundException(parentDocumentId);
+        for (File child : children) includeDocument(cursor, parentDocumentId + "/" + child.getName());
         return cursor;
+    }
+
+    @Override public String createDocument(String parent, String mime, String name) throws FileNotFoundException {
+        if (name.contains("/") || name.contains("\\") || name.equals("..")) throw new FileNotFoundException(name);
+        String id = parent + "/" + name;
+        File file = fileFor(id);
+        try {
+            if (DIRECTORY_MIME.equals(mime)) { if (!file.mkdir()) throw new java.io.IOException(); }
+            else if (!file.createNewFile()) throw new java.io.IOException();
+        } catch (java.io.IOException error) { throw new FileNotFoundException(name); }
+        return id;
+    }
+    @Override public String renameDocument(String id, String name) throws FileNotFoundException {
+        if (name.contains("/") || name.contains("\\") || name.equals("..")) throw new FileNotFoundException(name);
+        String target = id.substring(0, id.lastIndexOf('/') + 1) + name;
+        if (!fileFor(id).renameTo(fileFor(target))) throw new FileNotFoundException(name);
+        return target;
+    }
+    @Override public void deleteDocument(String id) throws FileNotFoundException {
+        if (!fileFor(id).delete()) throw new FileNotFoundException(id);
     }
 
     @Override
@@ -120,20 +136,18 @@ public class TestDocumentsProvider extends DocumentsProvider {
         add(row, cursor, DocumentsContract.Document.COLUMN_MIME_TYPE,
                 file.isDirectory() ? DIRECTORY_MIME : "application/octet-stream");
         add(row, cursor, DocumentsContract.Document.COLUMN_FLAGS,
-                file.isDirectory() ? DocumentsContract.Document.FLAG_DIR_SUPPORTS_CREATE : 0);
+                DocumentsContract.Document.FLAG_SUPPORTS_DELETE | DocumentsContract.Document.FLAG_SUPPORTS_RENAME | (file.isDirectory() ? DocumentsContract.Document.FLAG_DIR_SUPPORTS_CREATE : DocumentsContract.Document.FLAG_SUPPORTS_WRITE));
         add(row, cursor, DocumentsContract.Document.COLUMN_SIZE, file.length());
         add(row, cursor, DocumentsContract.Document.COLUMN_LAST_MODIFIED, file.lastModified());
     }
 
     private File fileFor(String documentId) {
         if (ROOT.equals(documentId)) return fixtureRoot;
+        if (!documentId.startsWith(ROOT + "/") || documentId.contains("..")) throw new IllegalArgumentException("Invalid document");
         return new File(fixtureRoot, documentId.substring((ROOT + "/").length()));
     }
 
-    private static boolean isKnown(String documentId) {
-        return ROOT.equals(documentId) || DIRECTORY.equals(documentId)
-                || ROOT_FILE.equals(documentId) || GAME_FILE.equals(documentId);
-    }
+    private boolean isKnown(String documentId) { return fileFor(documentId).exists(); }
 
     private static String displayName(String documentId) {
         int slash = documentId.lastIndexOf('/');

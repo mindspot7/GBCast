@@ -19,3 +19,17 @@
   and used its black compatibility background.
 - A real texture replacement pack was not provided; pack rendering is not claimed
   as visually validated. Cloud APK builds remain manual/explicit-trigger only.
+
+
+## Direct authoritative data storage - build 43
+
+- Shared GBFrame SAF Kotlin/native adapters replace the background mirror. The chosen tree is the actual data store. Ordinary startup does not hash/synchronize file contents.
+- One-time migration verified destination data and retired the obsolete local native data and covers directories. Verified on RG Rotate that both physical local directories are absent after migration and after a native save.
+- Existing saves/covers remain accessible. Crazy Taxi launched; saved to previously empty manual Slot 5, displayed its screenshot, and loaded that slot from Documents/GBCastData. Native VMU/NVRAM also use the selected tree.
+- Renamed the selected folder temporarily while the app was stopped: startup reported unavailable storage and offered the shared chooser without opening the core or falling back to local files. Restored the folder afterwards.
+- On-device instrumentation: DirectDataFolderTest verifies direct Kotlin/native reads/writes, external edits, metadata, replacement, listing, mmap, traversal rejection, no local mirror, and no fallback to a deliberately stale local save (2 tests).
+- Local unit tests: 18 app tests and 12 shared tests, including default-storage File adapter regression checks. App-ID check passed.
+- Existing destination files are retained when changing folders; unavailable previous storage is reported explicitly. Migration diagnostics/backups are under ignored test-output/direct-data-before on the PC.
+- No new storage permissions. Uses ACTION_OPEN_DOCUMENT_TREE, persistent URI grants and ContentResolver descriptors; no MANAGE_EXTERNAL_STORAGE or guessed shared-storage paths.
+- Texture directory access uses the same native adapter; a real replacement texture pack was not supplied for visual testing.
+- Folder-change device test: used the Android picker to move from GBCastData to a fresh GBCastDirectCheck tree, reopened with the new tree, ran Check access, then selected the original GBCastData again. Existing states/covers and direct access survived; the temporary test tree was removed after verifying the restored selection.

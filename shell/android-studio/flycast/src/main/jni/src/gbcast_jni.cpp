@@ -360,6 +360,21 @@ extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_saveCurren
 	gui_saveState(running, false);
 }
 
+extern "C" JNIEXPORT jlong JNICALL Java_com_flycast_emulator_emu_JNIdc_stateTimestamp(JNIEnv *, jclass, jint slot) {
+	if (slot < 0 || slot > 5) return 0;
+	return static_cast<jlong>(dc_getStateCreationDate(slot)) * 1000;
+}
+
+extern "C" JNIEXPORT jbyteArray JNICALL Java_com_flycast_emulator_emu_JNIdc_stateThumbnail(JNIEnv *env, jclass, jint slot) {
+	if (slot < 0 || slot > 5) return nullptr;
+	std::vector<u8> png;
+	dc_getStateScreenshot(slot, png);
+	if (png.empty()) return nullptr;
+	jbyteArray result = env->NewByteArray(static_cast<jsize>(png.size()));
+	if (result != nullptr) env->SetByteArrayRegion(result, 0, static_cast<jsize>(png.size()), reinterpret_cast<const jbyte *>(png.data()));
+	return result;
+}
+
 extern "C" JNIEXPORT jboolean JNICALL Java_com_flycast_emulator_emu_JNIdc_loadCurrentSlot(JNIEnv *, jclass) {
 	if (!dc_savestateAllowed() || settings.raHardcoreMode)
 		return JNI_FALSE;

@@ -45,6 +45,8 @@ public final class JNIdc
 	public static native void guiTogglePause();
 	public static native void restartGame();
 	public static native void saveCurrentSlot();
+	public static native byte[] stateThumbnail(int slot);
+	public static native long stateTimestamp(int slot);
 	public static native void setFastForwardMode(boolean enabled);
 	public static native boolean loadCurrentSlot();
 	public static native String insertDisk(String path);

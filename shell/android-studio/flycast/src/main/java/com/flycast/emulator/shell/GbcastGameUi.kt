@@ -27,6 +27,21 @@ import com.flycast.emulator.shell.ui.GBCastTheme
 import kotlinx.coroutines.delay
 import java.io.File
 
+@Composable
+private fun StateSlot(index: Int, save: Boolean, onClick: () -> Unit) {
+    val state by androidx.compose.runtime.produceState<Pair<Long?, android.graphics.Bitmap?>>(null to null, index, save) {
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val time = JNIdc.stateTimestamp(index).takeIf { it > 0 }
+            val thumb = JNIdc.stateThumbnail(index)?.let { android.graphics.BitmapFactory.decodeByteArray(it, 0, it.size) }
+            time to thumb
+        }
+    }
+    gb.frame.QuickMenuStateSlot(
+        id = "slot-$index", label = "Slot ${index + 1}", time = state.first,
+        thumbnail = state.second, enabled = save || state.first != null, onClick = onClick,
+    )
+}
+
 /** In-game quick menu. Pausing uses Flycast's gui_togglePause, which stops the CPU and keeps the last frame. */
 object GbcastGameUi {
     const val CLOSED = 0
@@ -150,15 +165,6 @@ object GbcastGameUi {
             JNIdc.configSetInt(section, name, value)
             tick++
         }
-        fun hasState(index: Int): Boolean {
-            val path = JNIdc.currentGamePath().orEmpty()
-            if (path.isBlank()) return false
-            val fileName = File(path).name
-            val base = fileName.substringBeforeLast('.', fileName)
-            val suffix = if (index == 0) "" else "_" + index
-            return File(JNIdc.dataDirectory().orEmpty(), base + suffix + ".state").isFile
-        }
-
         val discPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
             if (uri == null) return@rememberLauncherForActivityResult
             val copied = Storage.importFile(uri, File(activity.cacheDir, "disc-swap"))
@@ -172,13 +178,7 @@ object GbcastGameUi {
         val savePage = androidx.compose.runtime.remember {
             gb.frame.QuickMenuPage("save-state", "Save state") {
                 for (index in 0 until gb.frame.SaveData.MANUAL_SAVE_STATE_SLOTS) {
-                    val exists = hasState(index)
-                    gb.frame.QuickMenuItemRow(
-                        id = "save-slot-" + index,
-                        icon = androidx.compose.material.icons.Icons.Default.Save,
-                        label = "Slot " + (index + 1),
-                        value = if (exists) "Overwrite" else "Empty",
-                    ) {
+                    StateSlot(index, save = true) {
                         JNIdc.configSetInt("config", "Dreamcast.SavestateSlot", index)
                                 JNIdc.saveCurrentSlot()
                         toast("Saved slot " + (index + 1))
@@ -191,14 +191,7 @@ object GbcastGameUi {
             gb.frame.QuickMenuPage("load-state", "Load state") {
 
                 for (index in 0 until gb.frame.SaveData.MANUAL_SAVE_STATE_SLOTS) {
-                    val exists = hasState(index)
-                    gb.frame.QuickMenuItemRow(
-                        id = "load-slot-" + index,
-                        icon = androidx.compose.material.icons.Icons.Default.Restore,
-                        label = "Slot " + (index + 1),
-                        value = if (exists) "Saved" else "Empty",
-                        enabled = exists,
-                    ) {
+                    StateSlot(index, save = false) {
                         JNIdc.configSetInt("config", "Dreamcast.SavestateSlot", index)
 
                         if (JNIdc.loadCurrentSlot()) {

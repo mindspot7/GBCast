@@ -65,6 +65,7 @@ import com.flycast.emulator.shell.GameIndex
 import com.flycast.emulator.shell.Storage
 import gb.frame.HomeHelpBar
 import gb.frame.Covers
+import gb.frame.CoverImageOptions
 import gb.frame.ConfirmDialog
 import gb.frame.HomeActions
 import gb.frame.HomeGame
@@ -411,6 +412,11 @@ private fun GameOptions(
     onOpen: () -> Unit,
     onCover: () -> Unit,
 ) {
+    var coverOptions by remember(game.key) { mutableStateOf(false) }
+    if (coverOptions) {
+        CoverImageOptions(game.title, onLocalSearch = onCover, onDismiss = { coverOptions = false })
+        return
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(game.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
@@ -428,10 +434,10 @@ private fun GameOptions(
                     Spacer(Modifier.width(8.dp))
                     Text("Play")
                 }
-                TextButton(onClick = onCover) {
+                TextButton(onClick = { coverOptions = true }) {
                     Icon(Icons.Default.Image, null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Cover image")
+                    Text("Cover Image")
                 }
             }
         },

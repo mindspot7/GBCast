@@ -53,6 +53,14 @@ public final class NativeGLActivity extends BaseGLActivity {
 
         super.onCreate(savedInstanceState);
 
+        // System navigation/gestures do not pass through onKeyDown. Keep the game Activity alive
+        // and route Back to the pause menu; Compose's later callback owns nested menu pages.
+        getOnBackPressedDispatcher().addCallback(this, new androidx.activity.OnBackPressedCallback(true) {
+            @Override public void handleOnBackPressed() {
+                com.flycast.emulator.shell.GbcastGameUi.onAndroidBack(NativeGLActivity.this);
+            }
+        });
+
         // Create the actual GL view
         mView = new NativeGLView(this);
         mLayout = new RelativeLayout(this);
@@ -77,6 +85,7 @@ public final class NativeGLActivity extends BaseGLActivity {
                 && com.flycast.emulator.emu.JNIdc.guiState()
                 == com.flycast.emulator.shell.GbcastGameUi.CLOSED;
         super.onPause();
+        com.flycast.emulator.shell.GBCastBridge.syncDataFolder();
     }
 
     @Override
@@ -95,21 +104,18 @@ public final class NativeGLActivity extends BaseGLActivity {
     @Override
     @SuppressLint({"RestrictedApi", "GestureBackNavigation"}) // Physical B/Back pairs are deduplicated here; navigation still uses AndroidX Back callbacks.
     public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
+            if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                ignoreMenuBackUp = com.flycast.emulator.shell.GbcastInput.consumePairedBack(event);
+            } else if (event.getAction() == KeyEvent.ACTION_UP) {
+                if (!ignoreMenuBackUp && !event.isCanceled()) getOnBackPressedDispatcher().onBackPressed();
+                ignoreMenuBackUp = false;
+            }
+            // Handle the release once. Opening on DOWN then redispatching UP closed the menu immediately.
+            return true;
+        }
         if (com.flycast.emulator.shell.GbcastGameUi.getMenuOwnsKeys()) {
             final int key = event.getKeyCode();
-            if (key == KeyEvent.KEYCODE_BACK) {
-                if (event.getAction() == KeyEvent.ACTION_DOWN && com.flycast.emulator.shell.GbcastInput.consumePairedBack(event)) {
-                    ignoreMenuBackUp = true;
-                    return true;
-                }
-                if (event.getAction() == KeyEvent.ACTION_UP && ignoreMenuBackUp) {
-                    ignoreMenuBackUp = false;
-                    return true;
-                }
-                if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled())
-                    getOnBackPressedDispatcher().onBackPressed();
-                return true;
-            }
             if (key == KeyEvent.KEYCODE_BUTTON_B) {
                 if (event.getAction() == KeyEvent.ACTION_DOWN) com.flycast.emulator.shell.GbcastInput.note(event);
                 if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled())

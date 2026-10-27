@@ -124,6 +124,8 @@ static void setThreaded(bool v) { config::ThreadedRendering = v; }
 static bool getPacing() { return config::FramePacing; }
 static void setPacing(bool v) { config::FramePacing = v; }
 static bool getFog() { return config::Fog; }
+static bool getCustomTextures() { return config::CustomTextures; }
+static void setCustomTextures(bool v) { config::CustomTextures = v; }
 static void setFog(bool v) { config::Fog = v; }
 static bool getMip() { return config::UseMipmaps; }
 static void setMip(bool v) { config::UseMipmaps = v; }
@@ -175,6 +177,7 @@ static bool getCrash() { return config::UploadCrashLogs; }
 static void setCrash(bool v) { config::UploadCrashLogs = v; }
 
 static const BoolOpt kBools[] = {
+    {"config", "rend.CustomTextures", getCustomTextures, setCustomTextures},
 	{"config", "rend.StretchToWindow", getStretchToWindow, setStretchToWindow},
 	{"config", "rend.WideScreen", getWide, setWide},
 	{"config", "rend.SuperWideScreen", getSuperWide, setSuperWide},

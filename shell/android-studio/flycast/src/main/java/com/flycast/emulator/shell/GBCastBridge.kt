@@ -30,6 +30,23 @@ object GBCastBridge {
     private const val PREF_GAMES = "gbcast.gamesDir"
     private const val PREF_SETUP = "gbcast.setupDone"
     private var sharedRaInitialized = false
+    lateinit var dataFolder: gb.frame.AppDataFolder
+        private set
+
+    @JvmStatic
+    fun prepareDataFolder(context: Context, home: String) {
+        if (::dataFolder.isInitialized) return
+        File(home, "data/textures").mkdirs()
+        dataFolder = gb.frame.AppDataFolder(context, "GBCast", mapOf(
+            "data" to File(home, "data"),
+            "covers" to File(context.filesDir, "gbcast/covers"),
+        ), texturesRelativePath = "data/textures")
+        dataFolder.restoreAtStartup()
+        dataFolder.watch()
+    }
+
+    @JvmStatic
+    fun syncDataFolder() { if (::dataFolder.isInitialized) dataFolder.requestSync() }
 
     var disc: OpenDisc? = null
         private set

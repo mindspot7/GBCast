@@ -32,6 +32,7 @@ private enum class Screen { Library, Settings }
 @Composable
 fun GBCastRoot(onQuit: () -> Unit) {
     GBCastTheme {
+        gb.frame.DataFolderWarning(GBCastBridge.dataFolder)
         val ctx = LocalContext.current
         var setup by remember { mutableStateOf(GBCastBridge.setupDone(ctx)) }
         var screen by remember { mutableStateOf(Screen.Library) }
@@ -47,6 +48,7 @@ fun GBCastRoot(onQuit: () -> Unit) {
             if (!setup) {
                 SetupWizard(
                     steps = listOf(
+                        gb.frame.dataFolderWizardStep(GBCastBridge.dataFolder),
                         WizardStep(
                             Icons.Default.Folder,
                             "Games",

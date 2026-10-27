@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,34 +17,28 @@ import gb.frame.PerfOverlay
 import gb.frame.RaNotifications
 import kotlinx.coroutines.delay
 
-object GBCastOverlayOptions {
+object GBCastOverlayOptions : gb.frame.MonitoringSettings {
     private lateinit var preferences: android.content.SharedPreferences
-    var options by mutableStateOf(PerfOptions())
+    override var options by mutableStateOf(PerfOptions())
+        private set
+    override var showFfButton by mutableStateOf(false)
         private set
     fun initialize(context: Context) {
         preferences = context.getSharedPreferences("gbcast-overlays", Context.MODE_PRIVATE)
+        showFfButton = preferences.getBoolean("fastForwardButton", false)
         options = PerfOptions(JNIdc.configGetBool("config", "rend.ShowFPS"),
             preferences.getBoolean("speed", false), preferences.getBoolean("cpu", false), preferences.getBoolean("gpu", false),
             preferences.getBoolean("renderer", false), preferences.getBoolean("resolution", false), preferences.getBoolean("frameTime", false))
     }
-    fun set(key: String, enabled: Boolean) {
-        when (key) {
-            "fps" -> { JNIdc.configSetBool("config", "rend.ShowFPS", enabled); options = options.copy(fps = enabled) }
-            "speed" -> options = options.copy(speed = enabled)
-            "cpu" -> options = options.copy(cpu = enabled)
-            "gpu" -> options = options.copy(gpu = enabled)
-            "renderer" -> options = options.copy(renderer = enabled)
-            "resolution" -> options = options.copy(resolution = enabled)
-            "frameTime" -> options = options.copy(frameTime = enabled)
-        }
-        preferences.edit().putBoolean(key, enabled).apply()
+    override fun update(options: PerfOptions, showFfButton: Boolean) {
+        JNIdc.configSetBool("config", "rend.ShowFPS", options.fps)
+        this.options = options
+        this.showFfButton = showFfButton
+        preferences.edit().putBoolean("speed", options.speed).putBoolean("cpu", options.cpu)
+            .putBoolean("gpu", options.gpu).putBoolean("renderer", options.renderer)
+            .putBoolean("resolution", options.resolution).putBoolean("frameTime", options.frameTime)
+            .putBoolean("fastForwardButton", showFfButton).apply()
     }
-
-    fun items() = options.let { p -> listOf(
-        Triple("fps", "FPS", p.fps), Triple("speed", "Speed", p.speed),
-        Triple("cpu", "CPU", p.cpu), Triple("gpu", "GPU", p.gpu),
-        Triple("renderer", "Renderer", p.renderer), Triple("resolution", "Resolution", p.resolution),
-        Triple("frameTime", "Frame time", p.frameTime)) }
 }
 
 @Composable
@@ -71,8 +66,16 @@ fun GBCastGameplayOverlays(menuOpen: Boolean, onMenu: () -> Unit) {
     }
     Box(Modifier.fillMaxSize()) {
         if (!menuOpen) {
-            FilledTonalIconButton(onClick = onMenu, modifier = Modifier.align(Alignment.TopStart).safeDrawingPadding().padding(8.dp)) {
+            Row(modifier = Modifier.align(Alignment.TopStart).safeDrawingPadding().padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilledTonalIconButton(onClick = onMenu) {
                 Icon(Icons.Default.Menu, "Menu")
+            }
+            if (GBCastOverlayOptions.showFfButton) FilledTonalIconButton(
+                onClick = { DreamcastControls.setFastForward(!DreamcastControls.fastForwardActive) },
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = if (DreamcastControls.fastForwardActive) Color(0xFFE8C26A) else Color.Black.copy(alpha = .45f),
+                    contentColor = if (DreamcastControls.fastForwardActive) Color.Black else Color.White),
+            ) { Icon(Icons.Default.FastForward, "Fast-forward") }
             }
             PerfOverlay(GBCastOverlayOptions.options, "GBCast", fps, stats.getOrElse(3) { 60 }.toFloat().coerceAtLeast(1f),
                 when (stats.getOrElse(4) { 0 }) { 4 -> "Vulkan"; 5 -> "Vulkan OIT"; 3 -> "OpenGL OIT"; else -> "OpenGL ES" },

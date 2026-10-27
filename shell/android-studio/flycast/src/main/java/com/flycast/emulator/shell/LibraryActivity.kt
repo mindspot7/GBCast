@@ -17,8 +17,16 @@ import gb.frame.HomeKeys
 import gb.frame.HomeTheme
 import gb.frame.PlayTime
 import gb.frame.setControllerContent
+import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class LibraryActivity : ComponentActivity() {
+    private var ready by mutableStateOf(false)
+    private var startupError by mutableStateOf<Throwable?>(null)
     private var lastGamepadBAt = 0L
     private var lastGamepadBDevice = -1
     private var pairedBackDevice = -1
@@ -27,21 +35,30 @@ class LibraryActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val error = runCatching {
-            DreamcastControls.initialize(this)
-            GBCastBridge.start(this)
-        }.exceptionOrNull()
-        if (error != null) {
-            Log.e("GBCastStartup", "Failed to initialize GBCast launcher", error)
+        lifecycleScope.launch {
+            val error = withContext(Dispatchers.IO) {
+                runCatching {
+                    DreamcastControls.initialize(this@LibraryActivity)
+                    GBCastBridge.start(this@LibraryActivity)
+                }.exceptionOrNull()
+            }
+            startupError = error
+            ready = error == null
+            if (error != null) Log.e("GBCastStartup", "Failed to initialize GBCast launcher", error)
         }
         setControllerContent {
+            val error = startupError
             if (error != null) {
                 androidx.compose.material3.Text(
                     "GBCast failed to initialize. Please send this message to support:\\n" +
                         (error.message ?: error.javaClass.simpleName)
                 )
-            } else {
+            } else if (ready) {
                 GBCastRoot(onQuit = ::quit)
+            } else {
+                androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                    androidx.compose.material3.CircularProgressIndicator()
+                }
             }
         }
         hideSystemBars()
@@ -71,6 +88,7 @@ class LibraryActivity : ComponentActivity() {
 
     @SuppressLint("RestrictedApi") // ComponentActivity's public override contract requires delegating unhandled keys to super.
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (!ready) return super.dispatchKeyEvent(event)
         if (event.keyCode == KeyEvent.KEYCODE_BUTTON_B && event.action == KeyEvent.ACTION_DOWN) {
             lastGamepadBAt = event.eventTime
             lastGamepadBDevice = event.deviceId

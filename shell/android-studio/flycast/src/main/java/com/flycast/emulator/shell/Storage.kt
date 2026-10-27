@@ -3,6 +3,7 @@ package com.flycast.emulator.shell
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import androidx.documentfile.provider.DocumentFile
 import gb.frame.OpenDisc
 import gb.frame.SafGames
 import java.io.File
@@ -14,6 +15,38 @@ private object GamesFolder {
 }
 
 object Storage : SafGames(GameIndex.extensions, { GamesFolder.path }) {
+    /** Import a user-selected SAF tree; the native core requires real local data paths. */
+    fun importBiosFolder(uri: Uri, destination: File): Int {
+        val root = requireNotNull(DocumentFile.fromTreeUri(app, uri)) { "Could not open BIOS folder" }
+        var copied = 0
+        fun copyDirectory(source: DocumentFile, target: File) {
+            check(target.isDirectory || target.mkdirs()) { "Could not create data folder" }
+            for (child in source.listFiles()) {
+                val name = requireNotNull(child.name) { "Could not read filename" }
+                require(name != "." && name != ".." && '/' !in name && '\\' !in name) { "Invalid filename" }
+                val output = File(target, name)
+                require(output.canonicalPath.startsWith(destination.canonicalPath + File.separator)) { "Invalid data path" }
+                if (child.isDirectory) {
+                    copyDirectory(child, output)
+                } else if (child.isFile) {
+                    requireNotNull(app.contentResolver.openInputStream(child.uri)) { "Could not read $name" }.use { input ->
+                        if (target == destination && name.lowercase(java.util.Locale.ROOT) in DreamcastBios.sizes) {
+                            DreamcastBios.install(destination, name, input)
+                        } else {
+                            val temp = File.createTempFile("import-", ".tmp", target)
+                            try {
+                                temp.outputStream().use { input.copyTo(it) }
+                                check(temp.renameTo(output)) { "Could not save $name" }
+                            } finally { temp.delete() }
+                        }
+                    }
+                    copied++
+                }
+            }
+        }
+        copyDirectory(root, destination)
+        return copied
+    }
     var gamesDir: String
         get() = GamesFolder.path
         set(value) { GamesFolder.path = value }

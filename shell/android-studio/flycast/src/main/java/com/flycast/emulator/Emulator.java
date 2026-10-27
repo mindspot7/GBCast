@@ -46,6 +46,7 @@ public class Emulator extends Application {
             home = dir.getAbsolutePath();
             prefs.edit().putString(Config.pref_home, home).apply();
         }
+        com.flycast.emulator.shell.GBCastBridge.prepareDataFolder(this, home);
         String result = JNIdc.initEnvironment(this, getFilesDir().getAbsolutePath(), home, Locale.getDefault().toString());
         if (result != null)
             return result;

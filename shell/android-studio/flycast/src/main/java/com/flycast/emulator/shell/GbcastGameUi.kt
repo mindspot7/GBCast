@@ -1,6 +1,8 @@
 package com.flycast.emulator.shell
 
 import android.app.Activity
+import gb.frame.MonitoringQuickMenuRows
+import gb.frame.FastForwardQuickMenuAction
 import android.net.Uri
 import android.view.KeyEvent
 import android.view.View
@@ -366,10 +368,7 @@ object GbcastGameUi {
         val overlaysPage = androidx.compose.runtime.remember {
             gb.frame.QuickMenuPage("overlays", "Overlays") {
 
-                for ((key, label, enabled) in com.flycast.emulator.shell.ui.GBCastOverlayOptions.items()) {
-                    gb.frame.QuickMenuItemRow(id = "overlay-$key", icon = Icons.Default.Speed, label = label,
-                        value = if (enabled) "On" else "Off") { com.flycast.emulator.shell.ui.GBCastOverlayOptions.set(key, !enabled) }
-                }
+                MonitoringQuickMenuRows(com.flycast.emulator.shell.ui.GBCastOverlayOptions)
                 gb.frame.QuickMenuItemRow(
                     id = "touch-controls", icon = androidx.compose.material.icons.Icons.Default.TouchApp,
                     label = "Touch controls", value = if (com.flycast.emulator.shell.ui.DreamcastControls.showTouchControls) "Shown" else "Hidden",
@@ -453,11 +452,10 @@ object GbcastGameUi {
                     id = "load", icon = androidx.compose.material.icons.Icons.Default.Restore,
                     label = "Load state", hasSubmenu = true,
                 ) { openPage(loadPage, returnFocusItemId = "load") }
-                gb.frame.QuickMenuItemRow(
-                    id = "fast-forward", icon = androidx.compose.material.icons.Icons.Default.FastForward,
-                    label = "Fast-forward",
-                    value = if (com.flycast.emulator.shell.ui.DreamcastControls.fastForwardActive) "On" else "Off",
-                ) { com.flycast.emulator.shell.ui.DreamcastControls.setFastForward(!com.flycast.emulator.shell.ui.DreamcastControls.fastForwardActive) }
+                FastForwardQuickMenuAction(com.flycast.emulator.shell.ui.GBCastOverlayOptions,
+                    com.flycast.emulator.shell.ui.DreamcastControls.fastForwardActive) {
+                    com.flycast.emulator.shell.ui.DreamcastControls.setFastForward(!com.flycast.emulator.shell.ui.DreamcastControls.fastForwardActive)
+                }
                 gb.frame.QuickMenuItemRow(
                     id = "video", icon = androidx.compose.material.icons.Icons.Default.Tv,
                     label = "Video", hasSubmenu = true,

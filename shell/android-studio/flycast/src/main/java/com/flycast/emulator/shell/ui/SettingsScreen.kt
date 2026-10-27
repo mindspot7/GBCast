@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -74,7 +75,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
-import java.io.File
 
 enum class SettingsPage(val label: String, val icon: ImageVector) {
     System("System", Icons.Default.Tune),
@@ -129,10 +129,17 @@ fun SettingsScreen(onBack: () -> Unit, toast: (String) -> Unit, page: SettingsPa
             toast("Games folder saved")
         }
     }
-    val biosPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-        if (uri != null) {
-            val saved = Storage.importFile(uri, GBCastBridge.dataDir())
-            toast(if (saved != null) "Copied ${File(saved).name} into the GBCast data folder" else "Could not copy that file")
+    val biosPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
+        if (uri != null && !importingBios) scope.launch {
+            importingBios = true
+            try {
+                val count = withContext(Dispatchers.IO) { Storage.importBiosFolder(uri, GBCastBridge.dataDir()) }
+                cfg.tick++
+                toast(if (count == 0) "No files found in that folder" else "Copied $count files into the GBCast data folder")
+            } catch (error: Exception) {
+                cfg.tick++
+                toast("Import stopped: ${error.message}. Files already copied were kept.")
+            } finally { importingBios = false }
         }
     }
     val dreamcastBiosPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
@@ -180,7 +187,7 @@ fun SettingsScreen(onBack: () -> Unit, toast: (String) -> Unit, page: SettingsPa
         ) {
             Column(Modifier.widthIn(max = 760.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 when (current) {
-                    SettingsPage.System -> SystemPage(tick, cfg, { folderPicker.launch(null) }, { biosPicker.launch(arrayOf("*/*")) }, importingBios) {
+                    SettingsPage.System -> SystemPage(tick, cfg, { folderPicker.launch(null) }, { if (!importingBios) biosPicker.launch(null) }, importingBios) {
                         if (!importingBios) dreamcastBiosPicker.launch(arrayOf("*/*"))
                     }
                     SettingsPage.Video -> VideoPage(tick, cfg)
@@ -226,6 +233,14 @@ fun SettingsScreen(onBack: () -> Unit, toast: (String) -> Unit, page: SettingsPa
 private fun SystemPage(tick: Int, cfg: Cfg, onFolder: () -> Unit, onBios: () -> Unit, importingBios: Boolean, onDreamcastBios: () -> Unit) {
     val dir = GBCastBridge.gamesDir()
     SettingsGroup("Paths", Icons.Default.Folder) {
+        gb.frame.DataFolderControls(GBCastBridge.dataFolder)
+        SettingsDivider()
+        if (importingBios) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                CircularProgressIndicator()
+                Text("Importing BIOS and data files…")
+            }
+        }
         ActionRow(
             Icons.Default.Folder,
             "Games folder",
@@ -237,9 +252,9 @@ private fun SystemPage(tick: Int, cfg: Cfg, onFolder: () -> Unit, onBios: () -> 
         SettingsDivider()
         ActionRow(
             Icons.Default.Memory,
-            "Arcade BIOS and other data files",
-            "Import other system files into the data folder",
-            "Copy file",
+            "Bios folder",
+            "Copy BIOS and data files from a folder into the GBCast data folder, including subfolders.",
+            if (importingBios) "Importing…" else "Choose folder",
             onBios,
         )
         SettingsDivider()
@@ -323,10 +338,11 @@ private fun VideoPage(tick: Int, cfg: Cfg) {
         }
     }
     SettingsGroup("Overlays", Icons.Default.Info) {
-        GBCastOverlayOptions.items().forEachIndexed { index, (key, label, enabled) ->
-            if (index > 0) SettingsDivider()
-            ToggleRow(Icons.Default.Info, label, null, enabled) { GBCastOverlayOptions.set(key, it) }
-        }
+        gb.frame.MonitoringSettingsRows(GBCastOverlayOptions)
+    }
+    SettingsGroup("Textures", Icons.Default.Tv) {
+        ToggleRow(Icons.Default.Tv, "Custom textures", "Load texture packs from data/textures/<game ID> in the selected data folder after reopening the app.",
+            cfg.bool("config", "rend.CustomTextures")) { cfg.setBool("config", "rend.CustomTextures", it) }
     }
     SettingsGroup("Accuracy", null) {
         ToggleRow(Icons.Default.Tune, "Per-strip sorting", "Off uses per-triangle sorting.", cfg.bool("config", "rend.PerStripSorting")) { cfg.toggle("config", "rend.PerStripSorting") }

@@ -1,3 +1,4 @@
+#include "gbcast_skip.h"
 #include <jni.h>
 
 #include "cfg/option.h"
@@ -155,6 +156,12 @@ static bool getAutoSave() { return config::AutoSaveState; }
 static void setAutoSave(bool v) { config::AutoSaveState = v; }
 static bool getFreePlay() { return config::ForceFreePlay; }
 static void setFreePlay(bool v) { config::ForceFreePlay = v; }
+static bool getSkipLoads() { return gbcast::SkipLoads(); }
+static bool getSkipTransitions() { return gbcast::SkipTransitions(); }
+static bool getSkipSaves() { return gbcast::SkipSaves(); }
+static void setSkipLoads(bool v) { gbcast::SetSkipLoads(v); }
+static void setSkipTransitions(bool v) { gbcast::SetSkipTransitions(v); }
+static void setSkipSaves(bool v) { gbcast::SetSkipSaves(v); }
 static bool getFastGd() { return config::FastGDRomLoad; }
 static void setFastGd(bool v) { config::FastGDRomLoad = v; }
 static bool getRam() { return config::RamMod32MB; }
@@ -202,6 +209,9 @@ static const BoolOpt kBools[] = {
 	{"config", "Dreamcast.AutoSaveState", getAutoSave, setAutoSave},
 	{"config", "ForceFreePlay", getFreePlay, setFreePlay},
 	{"config", "FastGDRomLoad", getFastGd, setFastGd},
+	{"config", "GBFrame.SkipLoadingScreens", getSkipLoads, setSkipLoads},
+	{"config", "GBFrame.SkipTransitions", getSkipTransitions, setSkipTransitions},
+	{"config", "GBFrame.SkipSaveWaits", getSkipSaves, setSkipSaves},
 	{"config", "Dreamcast.RamMod32MB", getRam, setRam},
 	{"config", "UseReios", getReios, setReios},
 	{"network", "Enable", getNet, setNet},
@@ -664,3 +674,11 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_raCurre
 extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_raAchievements(JNIEnv *env, jclass) { return env->NewStringUTF(""); }
 #endif
 
+
+extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_initAutoSkip(JNIEnv*, jclass) { gbcast::InitAutoSkip(); }
+extern "C" JNIEXPORT jlongArray JNICALL Java_com_flycast_emulator_emu_JNIdc_autoSkipStats(JNIEnv* env, jclass) {
+    auto values = gbcast::AutoSkipStats();
+    jlong data[10]; for (int i = 0; i < 10; ++i) data[i] = values[i];
+    auto result = env->NewLongArray(10); if (result) env->SetLongArrayRegion(result, 0, 10, data);
+    return result;
+}

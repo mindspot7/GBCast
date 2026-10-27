@@ -1,3 +1,4 @@
+#include "gbcast_skip.h"
 #include "ta_ctx.h"
 #include "spg.h"
 #include "cfg/option.h"
@@ -50,13 +51,14 @@ bool QueueRender(TA_context* ctx)
 {
 	verify(ctx != 0);
 	
-	bool skipFrame = !rend_is_enabled();
+	const bool automatic = gbcast::AutoSkipActive() && !ctx->rend.isRTT && !config::EmulateFramebuffer;
+	bool skipFrame = !rend_is_enabled() || (automatic && gbcast::AutoSkipDropPresentation());
 	if (!skipFrame)
 	{
 		RenderCount++;
 		if (RenderCount % (config::SkipFrame + 1) != 0)
 			skipFrame = true;
-		else if (config::ThreadedRendering && rqueue != nullptr
+		else if (!automatic && config::ThreadedRendering && rqueue != nullptr
 				&& (config::AutoSkipFrame == 0 || (config::AutoSkipFrame == 1 && SH4FastEnough)))
 			// The previous render hasn't completed yet so we wait.
 			// If autoskipframe is enabled (normal level), we only do so if the CPU is running

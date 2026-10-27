@@ -60,6 +60,7 @@ object GBCastBridge {
         Thread({ DeviceTier.detect() }, "gbcast-device-tier").start()
         Covers.init(File(app.filesDir, "gbcast"), "Sega - Dreamcast", frameAspectRatio = 1.0f)
         app.ensureCore()?.let { error -> throw IllegalStateException(error) }
+        JNIdc.initAutoSkip()
         com.flycast.emulator.shell.ui.GBCastOverlayOptions.initialize(app)
         com.flycast.emulator.shell.ui.GBCastCheatDatabase.initialize(app)
         val savedSlot = int("config", "Dreamcast.SavestateSlot")

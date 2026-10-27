@@ -9,6 +9,9 @@ import gb.frame.RetroAchievements;
 
 public final class JNIdc
 {
+    public static native void initAutoSkip();
+    public static native long[] autoSkipStats();
+
 	static { System.loadLibrary("flycast"); }
 
 	public static native String initEnvironment(Emulator emulator, String filesDirectory, String homeDirectory, String locale);

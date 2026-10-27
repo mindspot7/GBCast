@@ -1,3 +1,4 @@
+#include "gbcast_skip.h"
 #include "common.h"
 #include "hw/gdrom/gdromv3.h"
 #include "cfg/option.h"
@@ -208,8 +209,12 @@ static u32 createTrackInfoFirstLast(const Track& track, u32 tracknum)
 
 u32 libGDR_ReadSector(u8 *buff, u32 startSector, u32 sectorCount, u32 sectorSize, bool stopOnMiss)
 {
-	if (disc != nullptr)
-		return disc->ReadSectors(startSector, sectorCount, buff, sectorSize, stopOnMiss);
+	if (disc != nullptr) {
+		const u32 read = disc->ReadSectors(startSector, sectorCount, buff, sectorSize, stopOnMiss);
+		// Both the hardware GD-ROM and HLE BIOS use this path. CDDA streaming is excluded.
+		if (!stopOnMiss) gbcast::AutoSkipDisc(read);
+		return read;
+	}
 	if (stopOnMiss)
 		return 0;
 	memset(buff, 0, sectorCount * sectorSize);

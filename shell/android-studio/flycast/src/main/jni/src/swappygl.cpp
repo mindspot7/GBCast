@@ -1,3 +1,4 @@
+#include "gbcast_skip.h"
 /*
 	Copyright 2026 flyinghead
 
@@ -100,11 +101,11 @@ void SwappyGLGC::changeSwapInterval()
 		return;
 	}
 	if (!gameSwapIntervalChanged
-			&& swapOnVSync == (!settings.input.fastForwardMode && config::VSync))
+			&& swapOnVSync == (!(settings.input.fastForwardMode || gbcast::AutoSkipActive()) && config::VSync))
 		return;
 	gameSwapIntervalChanged = false;
 	const bool oldSwapOnVSync = swapOnVSync;
-	swapOnVSync = (!settings.input.fastForwardMode && config::VSync);
+	swapOnVSync = (!(settings.input.fastForwardMode || gbcast::AutoSkipActive()) && config::VSync);
 	if (swapOnVSync)
 	{
 		if (!oldSwapOnVSync)

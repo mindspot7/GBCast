@@ -1,3 +1,4 @@
+#include "gbcast_skip.h"
 #include "Renderer_if.h"
 #include "spg.h"
 #include "rend/texconv.h"
@@ -286,6 +287,7 @@ static PvrMessageQueue pvrQueue;
 
 bool rend_single_frame(const bool& enabled)
 {
+	gbcast::AutoSkipPresent();
 	FC_PROFILE_SCOPE;
 
 	const int timeout = SPG_CONTROL.isPAL() ? 23 : 20;

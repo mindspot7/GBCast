@@ -43,3 +43,16 @@
 - Fast GD-ROM load moved from the main Performance page into Loading Times. No unsupported Saturn Skip Engine controls were added to GBCast.
 - RG Rotate: verified the three Data rows, wrapped BIOS path and both Missing states (no Dreamcast BIOS installed), shared BIOS dialog/folder picker, HLE placement, Save states/Loading Times/Dreamcast order, and touch scrolling on 720x720.
 - Local app tests (18), shared tests (14), and app-ID checks passed. No storage permissions or installation IDs changed.
+
+## Shared automatic Skip Engine - local build 45
+
+- Implements Skip loading screens, Skip transitions and Skip save waits in System > Loading Times using GBFrame's shared native detector. All three new persisted flags default off and remain independent of manual fast-forward and Fast GD-ROM load.
+- Actual inputs: tiny renderer-owned game pictures, unmuted AICA samples, disc reads through hardware and HLE paths, VMU blocks and Naomi EEPROM. No Android screen-capture permission or changes to storage access.
+- Pausing, opening menus, loading states, disc/network changes and missing/stale pictures suppress/reset automatic acceleration. Online/multiboard and manual fast-forward suppress it. Rendering acceleration preserves render-to-texture and framebuffer writes.
+- RG Rotate, Android 12: Crazy Taxi reached its title/attract sequence with real loading/VMU detection in GLES and Vulkan, returning to normal speed with audio/moving pictures. GLES sample: 4,907 emulated frames, 1,345 picture samples, 11,898 disc sectors, 27,136 backup bytes, 638 accelerated frames; mean capture 2.06 ms. Vulkan final sample: 1,836 frames, 469 samples, 8,682 sectors, 27,136 backup bytes, 645 accelerated frames; mean capture 1.97 ms. Three startup samples unavailable before renderer initialization in each session. Observed Vulkan title at 60.6 FPS / 101.1%.
+- Fixed an experimental Vulkan pacing regression found during device testing: automatic skips keep swapchain and Swappy configuration stable and only drop eligible display renders. No emulation or backup writes are skipped.
+- With all options off, diagnostic picture/activity counters stayed unchanged. Restored new flags off and original GLES renderer after testing; retained existing Fast GD-ROM preference and user data.
+- Shared native ARM64 tests: 17 passed on device (three detectors, cancellation, defaults, streaming, concurrent callbacks and background saves). Device instrumentation: 1 passed for native option binding and independence from disc/manual switches. App unit tests: 18; shared unit tests: 14. App-ID and whitespace checks passed.
+- Fast GD-ROM load remains a separate option: getGDROMTicks() shortens DMA scheduling to 512 cycles; it does not handle scene transitions or save waits. Both features can coexist but are not equivalent. HLE disc reads are detected by the shared Skip Engine even where the hardware DMA timing option does not apply.
+- Detection is heuristic. The standalone native tests cover all three reasons; real-game logs also observed transition detection during Vulkan investigation. No claim of universal game compatibility or a measured percentage reduction in loading time.
+- Local builds only; GitHub synchronization uses [skip ci].

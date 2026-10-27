@@ -1,3 +1,4 @@
+#include "gbcast_skip.h"
 /*
 	This file is part of reicast.
 
@@ -1588,10 +1589,11 @@ void AICA_Sample()
 			VolumePan(*(s16*)&DSPData->EFREG[i], dsp_out_vol[i].EFSDL, dsp_out_vol[i].EFPAN, mixl, mixr);
 	}
 
+	gbcast::AutoSkipAudio(std::clamp(mixl, -32768, 32767), std::clamp(mixr, -32768, 32767));
 #ifdef LIBRETRO
 	if (settings.aica.muteAudio)
 #else
-	if (settings.input.fastForwardMode || settings.aica.muteAudio)
+	if (settings.input.fastForwardMode || gbcast::AutoSkipActive() || settings.aica.muteAudio)
 #endif
 		return;
 

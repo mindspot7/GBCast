@@ -1,3 +1,4 @@
+#include "gbcast_skip.h"
 /*
     Created on: Oct 18, 2019
 
@@ -136,9 +137,9 @@ void SDLGLGraphicsContext::swap()
 
 void SDLGLGraphicsContext::changeGLSwapInterval()
 {
-	if (!gameSwapIntervalChanged && swapOnVSync == (!settings.input.fastForwardMode && config::VSync))
+	if (!gameSwapIntervalChanged && swapOnVSync == (!(settings.input.fastForwardMode || gbcast::AutoSkipActive()) && config::VSync))
 		return;
-	swapOnVSync = (!settings.input.fastForwardMode && config::VSync);
+	swapOnVSync = (!(settings.input.fastForwardMode || gbcast::AutoSkipActive()) && config::VSync);
 	gameSwapIntervalChanged = false;
 	int swapInterval = 0;
 	if (swapOnVSync)

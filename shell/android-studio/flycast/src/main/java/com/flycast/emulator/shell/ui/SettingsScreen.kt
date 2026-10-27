@@ -74,6 +74,8 @@ import gb.frame.SystemSettings
 import gb.frame.SystemFolderSetting
 import gb.frame.SystemBiosFolderSetting
 import gb.frame.SystemBiosFile
+import gb.frame.SystemStartupOptions
+import gb.frame.SystemToggleSetting
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -259,8 +261,13 @@ private fun SystemPage(tick: Int, cfg: Cfg, onFolder: () -> Unit, onBios: () -> 
                 cfg.toggle("config", "UseReios")
             }
         },
+        startup = SystemStartupOptions(
+            skipLoadingScreens = SystemToggleSetting(cfg.bool("config", "GBFrame.SkipLoadingScreens"), { cfg.setBool("config", "GBFrame.SkipLoadingScreens", it) }),
+            skipTransitions = SystemToggleSetting(cfg.bool("config", "GBFrame.SkipTransitions"), { cfg.setBool("config", "GBFrame.SkipTransitions", it) }),
+            skipSaveWaits = SystemToggleSetting(cfg.bool("config", "GBFrame.SkipSaveWaits"), { cfg.setBool("config", "GBFrame.SkipSaveWaits", it) }),
+        ),
         startupExtras = {
-            ToggleRow(Icons.Default.Speed, "Fast GD-ROM load", "Reduce disc loading time when supported by the game", cfg.bool("config", "FastGDRomLoad")) {
+            ToggleRow(Icons.Default.Speed, "Fast GD-ROM load", "Reduce emulated GD-ROM transfer delays. Independent of the automatic skip options; some games require original timing.", cfg.bool("config", "FastGDRomLoad")) {
                 cfg.toggle("config", "FastGDRomLoad")
             }
         },

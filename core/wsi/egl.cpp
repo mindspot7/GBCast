@@ -1,3 +1,4 @@
+#include "gbcast_skip.h"
 /*
     Created on: Oct 18, 2019
 
@@ -212,9 +213,9 @@ void EGLGraphicsContext::swap()
 
 void EGLGraphicsContext::changeSwapInterval()
 {
-	if (!gameSwapIntervalChanged && swapOnVSync == (!settings.input.fastForwardMode && config::VSync))
+	if (!gameSwapIntervalChanged && swapOnVSync == (!(settings.input.fastForwardMode || gbcast::AutoSkipActive()) && config::VSync))
 		return;
-	swapOnVSync = (!settings.input.fastForwardMode && config::VSync);
+	swapOnVSync = (!(settings.input.fastForwardMode || gbcast::AutoSkipActive()) && config::VSync);
 	gameSwapIntervalChanged = false;
 	currentSwapInterval = 0;
 	if (swapOnVSync)

@@ -1,3 +1,4 @@
+#include "gbcast_skip.h"
 #include "maple_devs.h"
 #include "maple_cfg.h"
 #include "maple_helper.h"
@@ -619,6 +620,7 @@ struct maple_sega_vmu: maple_base
 						}
 						else
 							DEBUG_LOG(MAPLE, "VMU %s block read: Block %d addr %x len %d", logical_port, Block, Block*512, 512);
+						gbcast::AutoSkipStorage(512);
 						wptr(flash_data+Block*512,512);
 					}
 					return MDRS_DataTransfer;//data transfer
@@ -695,6 +697,7 @@ struct maple_sega_vmu: maple_base
 							skip(write_len);
 							return MDRE_FileError; //invalid params
 						}
+						gbcast::AutoSkipStorage(write_len);
 						rptr(&flash_data[write_adr],write_len);
 
 						if (file != nullptr)

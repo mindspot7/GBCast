@@ -1,3 +1,4 @@
+#include "gbcast_skip.h"
 /*
 	 Copyright 2020 flyinghead
 
@@ -1890,6 +1891,7 @@ void MIEImpl::handle_86_subcommand()
 			//printState(Command,buffer_in,buffer_in_len);
 			address = address % sizeof(eeprom);
 			size = std::min((int)sizeof(eeprom) - address, size);
+			gbcast::AutoSkipStorage(size);
 			memcpy(eeprom + address, dma_buffer_in + 4, size);
 
 			std::string eeprom_file = getEepromPath();
@@ -1921,6 +1923,7 @@ void MIEImpl::handle_86_subcommand()
 			//printState(Command,buffer_in,buffer_in_len);
 			reply(MDRS_JVSReply, sizeof(eeprom) / 4);
 			int size = sizeof(eeprom) - address;
+			gbcast::AutoSkipStorage(size);
 			memcpy(dma_buffer_out, eeprom + address, size);
 			dma_buffer_out += size;
 			*dma_count_out += size;

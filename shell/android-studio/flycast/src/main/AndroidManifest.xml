@@ -54,7 +54,7 @@
             android:name="com.flycast.emulator.shell.LibraryActivity"
             android:configChanges="orientation|navigation|screenSize|screenLayout|uiMode|keyboard|keyboardHidden"
             android:exported="true"
-            android:theme="@android:style/Theme.NoTitleBar.Fullscreen" />
+            android:theme="@style/Theme.GBCast.Launch" />
         <activity
             android:name="com.flycast.emulator.NativeGLActivity"
             android:configChanges="orientation|navigation|screenSize|screenLayout|uiMode|keyboard|keyboardHidden"

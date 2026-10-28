@@ -193,16 +193,19 @@ object GbcastGameUi {
             JNIdc.configSetInt(section, name, value)
             tick++
         }
-        val discPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-            if (uri == null) return@rememberLauncherForActivityResult
-            val copied = Storage.importFile(uri, File(activity.cacheDir, "disc-swap"))
-            message = if (copied == null) {
-                "Could not read that disc"
-            } else {
-                JNIdc.insertDisk(copied) ?: "Disc inserted. Resume to continue."
+        val discPickerPage = androidx.compose.runtime.remember {
+            gb.frame.QuickMenuPage("disc-picker", "Swap disc", fullScreen = true) {
+                val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+                    if (uri != null) {
+                        val copied = Storage.importFile(uri, File(activity.cacheDir, "disc-swap"))
+                        message = if (copied == null) "Could not read that disc"
+                        else JNIdc.insertDisk(copied) ?: "Disc inserted. Resume to continue."
+                    }
+                    back()
+                }
+                androidx.compose.runtime.LaunchedEffect(Unit) { picker.launch(arrayOf("*/*")) }
             }
         }
-
         val savePage = androidx.compose.runtime.remember {
             gb.frame.QuickMenuPage("save-state", "Save state") {
                 for (index in 0 until gb.frame.SaveData.MANUAL_SAVE_STATE_SLOTS) {
@@ -415,7 +418,9 @@ object GbcastGameUi {
                 gb.frame.QuickMenuItemRow(
                     id = "disc-swap", icon = androidx.compose.material.icons.Icons.Default.Eject,
                     label = "Swap disc", hasSubmenu = false,
-                ) { discPicker.launch(arrayOf("*/*")) }
+                ) {
+                    openPage(discPickerPage, returnFocusItemId = "disc-swap")
+                }
 
                 gb.frame.QuickMenuItemRow(
                     id = "per-game", icon = androidx.compose.material.icons.Icons.Default.Tune,

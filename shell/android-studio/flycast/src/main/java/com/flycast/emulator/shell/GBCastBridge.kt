@@ -243,6 +243,9 @@ object GBCastBridge {
         }
     }
 
+    /** The last [states] result, shown at once when the library opens again. */
+    @Volatile var lastStates: List<SaveSlot> = emptyList()
+        private set
     fun states(games: List<gb.frame.Game>): List<SaveSlot> {
         val legacy = dataDir().listFiles().orEmpty().filter { it.isFile && it.name.endsWith(".state") }.map { it.name }.toSet()
         for (game in games) {
@@ -259,7 +262,7 @@ object GBCastBridge {
                 if (slot in 0..AUTO_SAVE_SLOT) out += SaveSlot(game.path, game.title, slot, file.lastModified())
             }
         }
-        return out.sortedByDescending { it.time }
+        return out.sortedByDescending { it.time }.also { lastStates = it }
     }
 
     data class SaveSlot(val gamePath: String, val title: String, val slot: Int, val time: Long)

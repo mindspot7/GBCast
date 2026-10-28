@@ -136,11 +136,17 @@ fun LibraryScreen(
     var confirmQuit by MenuState.quitOpen
     MenuState.onQuit = onQuit
 
-    var games by remember { mutableStateOf<List<gb.frame.Game>>(emptyList()) }
-    var loading by remember { mutableStateOf(false) }
+    // The last scan's list at once (no "no games" flash, no spinner when coming back from a game); scanned again below
+    var games by remember {
+        mutableStateOf(Storage.cachedScan(GBCastBridge.gamesDir()).let { found ->
+            val kept = GameIndex.filterTracks(found.map { it.path }).toSet()
+            found.filter { it.path in kept }
+        })
+    }
+    var loading by remember { mutableStateOf(games.isEmpty() && GBCastBridge.gamesDir().isNotBlank()) }
     var scanError by remember { mutableStateOf<String?>(null) }
     var refreshKey by remember { mutableIntStateOf(0) }
-    var states by remember { mutableStateOf<List<GBCastBridge.SaveSlot>>(emptyList()) }
+    var states by remember { mutableStateOf(GBCastBridge.lastStates) }
     var coverVersion by remember { mutableIntStateOf(0) }
     var openingGame by remember { mutableStateOf(false) }
     LifecycleResumeEffect(Unit) {
@@ -163,13 +169,14 @@ fun LibraryScreen(
             }
         }
         scanned.onSuccess {
-            games = it
+            if (it != games) games = it
             scanError = null
         }.onFailure { scanError = it.message ?: "Could not read the games folder" }
         loading = false
     }
     LaunchedEffect(games, refreshKey) {
-        states = withContext(Dispatchers.IO) { runCatching { GBCastBridge.states(games) }.getOrDefault(emptyList()) }
+        val found = withContext(Dispatchers.IO) { runCatching { GBCastBridge.states(games) }.getOrDefault(emptyList()) }
+        if (found != states) states = found
     }
     val entries = remember(states) {
         states.map { s ->

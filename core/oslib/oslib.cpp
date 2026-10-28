@@ -17,6 +17,9 @@
     along with Flycast.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "oslib.h"
+#ifdef __ANDROID__
+#include "save_paths.hpp"
+#endif
 #include "stdclass.h"
 #include "cfg/cfg.h"
 #include "cfg/option.h"
@@ -83,7 +86,19 @@ std::string getVmuPath(const std::string& port, bool save)
 	}
 	
 	// Fall back to default paths
-	std::string wpath = get_writable_data_path(vmuName);
+	#ifdef __ANDROID__
+    std::string folder = "saves/";
+    if (config::PerGameVmu && !settings.content.fileName.empty())
+        folder += gb::gameFolderName(settings.content.fileName) + "/";
+    make_directory(get_writable_data_path("saves"));
+    make_directory(get_writable_data_path(folder));
+    std::string wpath = get_writable_data_path(folder + vmuName);
+    // A VMU from before the per-game folders stays in use where it is
+    if (!file_exists(wpath) && file_exists(get_writable_data_path("saves/" + vmuName)))
+        wpath = get_writable_data_path("saves/" + vmuName);
+#else
+    std::string wpath = get_writable_data_path(vmuName);
+#endif
 	if (save || file_exists(wpath))
 		return wpath;
 	std::string rpath = get_readonly_data_path(vmuName);
@@ -139,6 +154,14 @@ std::string findFlash(const std::string& prefix, const std::string& names)
 			}
 		}
 
+        // Android's selected data folder has a dedicated firmware directory; flash written by the emulator
+        // (getFlashSavePath) is in saves/ and wins over the original copy.
+#ifdef __ANDROID__
+        const std::string saved = get_readonly_data_path("saves/" + name);
+        if (hostfs::storage().exists(saved)) return saved;
+        const std::string bios = get_readonly_data_path("bios/" + name);
+        if (hostfs::storage().exists(bios)) return bios;
+#endif
 		// Then check default paths
 		std::string fullpath = get_readonly_data_path(name);
 		if (hostfs::storage().exists(fullpath))
@@ -163,11 +186,20 @@ std::string findFlash(const std::string& prefix, const std::string& names)
 
 std::string getFlashSavePath(const std::string& prefix, const std::string& name)
 {
+#ifdef __ANDROID__
+    make_directory(get_writable_data_path("saves"));
+    return get_writable_data_path("saves/" + prefix + name);
+#else
 	return get_writable_data_path(prefix + name);
+#endif
 }
 
 std::string findNaomiBios(const std::string& name)
 {
+#ifdef __ANDROID__
+    const std::string bios = get_readonly_data_path("bios/" + name);
+    if (hostfs::storage().exists(bios)) return bios;
+#endif
 	// First check user-defined BIOS paths
 	for (const auto& path : config::BiosPath.get())
 	{
@@ -197,6 +229,18 @@ std::string findNaomiBios(const std::string& name)
 
 std::string getSavestatePath(int index, bool writable)
 {
+#ifdef __ANDROID__
+    // The Android shell supplies five numbered manual slots and a separate automatic slot.
+    if (index >= 0) {
+        const auto folder = gb::gameFolderName(settings.content.fileName);
+        if (writable) {
+            make_directory(get_writable_data_path("savestates"));
+            make_directory(get_writable_data_path("savestates/" + folder));
+        }
+        return get_writable_data_path(gb::stateRelativePath(settings.content.fileName,
+            index == 5 ? "auto" : std::to_string(index + 1)));
+    }
+#endif
 	std::string state_file = get_file_basename(settings.content.fileName);
 
 	char index_str[4] = "";

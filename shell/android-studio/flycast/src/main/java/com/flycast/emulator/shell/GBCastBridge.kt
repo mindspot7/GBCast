@@ -30,19 +30,37 @@ object GBCastBridge {
     private const val PREF_GAMES = "gbcast.gamesDir"
     private const val PREF_SETUP = "gbcast.setupDone"
     private var sharedRaInitialized = false
+    private lateinit var statePreferences: android.content.SharedPreferences
     lateinit var dataFolder: gb.frame.AppDataFolder
         private set
 
     @JvmStatic
     fun prepareDataFolder(context: Context, home: String) {
         if (::dataFolder.isInitialized) return
+        statePreferences = android.preference.PreferenceManager.getDefaultSharedPreferences(context)
         dataFolder = gb.frame.AppDataFolder(context, "GBCast", mapOf(
+            "bios" to File(home, "data/bios"),
+            "saves" to File(home, "data/saves"),
+            "savestates" to File(home, "data/savestates"),
+            "textures" to File(home, "data/textures"),
             "data" to File(home, "data"),
             "covers" to File(context.filesDir, "gbcast/covers"),
-        ), texturesRelativePath = "data/textures")
+        ), texturesRelativePath = "textures")
         System.loadLibrary("flycast")
         dataFolder.openAtStartup()
         File(home, "data/textures").mkdirs()
+        val old = File(home, "data")
+        for (file in old.listFiles().orEmpty().filter { it.isFile }) {
+            val name = file.name
+            val destination = when {
+                name.endsWith("_nvmem.bin") -> File(old, "saves/$name")
+                name in DreamcastBios.sizes || name == "dc_boot.bin.bak" || name.startsWith("naomi") && (name.endsWith(".zip") || name.endsWith(".bin")) ||
+                    name.endsWith("bios.zip") -> File(old, "bios/$name")
+                name.startsWith("vmu_save_") || name.contains("_vmu_save_") -> File(old, "saves/$name")
+                else -> null
+            }
+            if (destination != null) gb.frame.DataLayout.move(file, destination)
+        }
     }
 
 
@@ -142,7 +160,8 @@ object GBCastBridge {
 
     fun dataDir(): File = File(JNIdc.dataDirectory() ?: "")
 
-    fun biosPresent(): Boolean = File(dataDir(), "dc_boot.bin").isFile || File(dataDir(), "dc_boot.bin.bak").isFile
+    fun biosDir(): File = File(dataDir(), "bios")
+    fun biosPresent(): Boolean = DreamcastBios.present(biosDir(), "dc_boot.bin")
 
     /** Opens [safPath] and starts [NativeGLActivity]. [slot] loads that Flycast state after boot when auto-load is off. */
     suspend fun launch(context: Context, safPath: String, slot: Int = -1, fresh: Boolean = false): String? {
@@ -151,6 +170,7 @@ object GBCastBridge {
         }
         val opened = withContext(Dispatchers.IO) { Storage.openForCore(safPath) }
             ?: return "Could not open this game. Check the folder permission and the disc files."
+        migrateStates(safPath)
         disc?.close()
         disc = opened
         PlayTime.update(safPath, true)
@@ -183,29 +203,42 @@ object GBCastBridge {
         return null
     }
 
+    private fun stateLabel(slot: Int) = if (slot == AUTO_SAVE_SLOT) "auto" else (slot + 1).toString()
+    private fun stateFile(game: String, slot: Int) = gb.frame.DataLayout.stateFile(dataDir(), game, stateLabel(slot))
+    private fun migrateStates(game: String) {
+        val base = Storage.fileName(game).substringBeforeLast('.')
+        val mover = gb.frame.SaveStateFiles(dataDir(), statePreferences)
+        for (slot in 0..AUTO_SAVE_SLOT) {
+            val suffix = if (slot == 0) "" else "_$slot"
+            mover.moveFamily(File(dataDir(), "$base$suffix.state"), stateFile(game, slot))
+        }
+    }
+
     fun states(games: List<gb.frame.Game>): List<SaveSlot> {
-        val dir = dataDir()
-        val files = dir.listFiles { f -> f.isFile && f.name.endsWith(".state") } ?: return emptyList()
-        val byName = games.associateBy { Storage.fileName(it.path).substringBeforeLast('.') }
-        return files.mapNotNull { file ->
-            val match = Regex("^(.*?)(?:_(\\d+))?\\.state$").matchEntire(file.name) ?: return@mapNotNull null
-            val base = match.groupValues[1]
-            val slot = match.groupValues[2].toIntOrNull() ?: 0
-            if (slot !in 0..AUTO_SAVE_SLOT) return@mapNotNull null
-            val game = byName[base] ?: return@mapNotNull null
-            SaveSlot(game.path, game.title, slot, file.lastModified())
-        }.sortedByDescending { it.time }
+        val legacy = dataDir().listFiles().orEmpty().filter { it.isFile && it.name.endsWith(".state") }.map { it.name }.toSet()
+        for (game in games) {
+            val base = Storage.fileName(game.path).substringBeforeLast('.')
+            if ((0..AUTO_SAVE_SLOT).any { "$base${if (it == 0) "" else "_$it"}.state" in legacy }) migrateStates(game.path)
+        }
+        val byName = games.associateBy { SaveData.gameFolderName(it.path) }
+        val out = mutableListOf<SaveSlot>()
+        for (dir in File(dataDir(), "savestates").listFiles().orEmpty().filter { it.isDirectory }) {
+            val game = byName[dir.name] ?: continue
+            for (file in dir.listFiles().orEmpty().filter { it.isFile && it.name.endsWith(".state") }) {
+                val label = file.name.removePrefix("${dir.name}_").removeSuffix(".state")
+                val slot = if (label == "auto") AUTO_SAVE_SLOT else (label.toIntOrNull() ?: continue) - 1
+                if (slot in 0..AUTO_SAVE_SLOT) out += SaveSlot(game.path, game.title, slot, file.lastModified())
+            }
+        }
+        return out.sortedByDescending { it.time }
     }
 
     data class SaveSlot(val gamePath: String, val title: String, val slot: Int, val time: Long)
 
-    private fun latestStateSlot(gamePath: String): Int? {
-        val base = Storage.fileName(gamePath).substringBeforeLast('.')
-        return (0..AUTO_SAVE_SLOT).mapNotNull { slot ->
-            val suffix = if (slot == 0) "" else "_$slot"
-            File(dataDir(), "$base$suffix.state").takeIf(File::isFile)?.let { slot to it.lastModified() }
-        }.maxByOrNull { it.second }?.first
-    }
+    private fun latestStateSlot(gamePath: String): Int? = (0..AUTO_SAVE_SLOT).mapNotNull { slot ->
+        stateFile(gamePath, slot).takeIf { it.isFile }?.let { slot to it.lastModified() }
+    }.maxByOrNull { it.second }?.first
+
 }
 
 

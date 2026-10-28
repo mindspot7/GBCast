@@ -138,7 +138,7 @@ fun SettingsScreen(onBack: () -> Unit, toast: (String) -> Unit, page: SettingsPa
         if (uri != null && !importingBios) scope.launch {
             importingBios = true
             try {
-                val count = withContext(Dispatchers.IO) { Storage.importBiosFolder(uri, GBCastBridge.dataDir()) }
+                val count = withContext(Dispatchers.IO) { Storage.importBiosFolder(uri, GBCastBridge.biosDir()) }
                 cfg.tick++
                 toast(if (count == 0) "No files found in that folder" else "Copied $count files into the GBCast data folder")
             } catch (error: Exception) {
@@ -158,7 +158,7 @@ fun SettingsScreen(onBack: () -> Unit, toast: (String) -> Unit, page: SettingsPa
                                 if (it.moveToFirst()) it.getString(0) else null
                             } ?: error("Could not read filename")
                             requireNotNull(ctx.contentResolver.openInputStream(uri)).use { input ->
-                                DreamcastBios.install(GBCastBridge.dataDir(), name, input)
+                                DreamcastBios.install(GBCastBridge.biosDir(), name, input)
                             }
                         }.fold({ "Imported $it" }, { it.message ?: "Could not import BIOS" })
                     }
@@ -238,8 +238,8 @@ fun SettingsScreen(onBack: () -> Unit, toast: (String) -> Unit, page: SettingsPa
 private fun SystemPage(tick: Int, cfg: Cfg, onFolder: () -> Unit, onBios: () -> Unit, importingBios: Boolean, onDreamcastBios: () -> Unit) {
     val biosFiles = remember(tick) {
         DreamcastBios.sizes.keys.map { name ->
-            val present = DreamcastBios.present(GBCastBridge.dataDir(), name)
-            val actualName = if (name == "dc_boot.bin" && present && !gb.frame.DataFile(GBCastBridge.dataDir(), name).isFile) "$name.bak" else name
+            val present = DreamcastBios.present(GBCastBridge.biosDir(), name)
+            val actualName = if (name == "dc_boot.bin" && present && !gb.frame.DataFile(GBCastBridge.biosDir(), name).isFile) "$name.bak" else name
             SystemBiosFile(actualName, present)
         }
     }
@@ -248,7 +248,7 @@ private fun SystemPage(tick: Int, cfg: Cfg, onFolder: () -> Unit, onBios: () -> 
         gamesFolder = SystemFolderSetting(GBCastBridge.gamesDir().takeIf { it.isNotBlank() }?.let(Storage::folderLabel),
             "Choose the folder containing your Dreamcast and arcade disc images.", onFolder),
         biosFolder = SystemBiosFolderSetting(
-            path = if (GBCastBridge.dataFolder.folder != null || biosFiles.any { it.loaded }) GBCastBridge.dataFolder.displayPath(GBCastBridge.dataDir()) else null,
+            path = if (GBCastBridge.dataFolder.folder != null || biosFiles.any { it.loaded }) GBCastBridge.dataFolder.displayPath(GBCastBridge.biosDir()) else null,
             description = "Choose a folder containing dc_boot.bin, dc_flash.bin and any other required BIOS files.",
             files = biosFiles, onChooseFolder = onBios, onChooseFiles = onDreamcastBios, busy = importingBios,
         ),

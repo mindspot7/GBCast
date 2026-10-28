@@ -207,18 +207,19 @@ object DreamcastControls : ControlsHost {
     }
 }
 
-// Positions use the alpha-trimmed controller artwork, matching what PadDiagram actually displays.
+// Positions are fractions of the alpha-trimmed controller artwork (267x298), measured on it; the diagram has the
+// artwork's own ratio, so the artwork fills it and the buttons sit on the drawn ones
 private val DreamcastPad = PadLayout(listOf(
-    PadButton("L", "L", x = .22f, y = .10f, w = .14f, h = .07f, wOfWidth = true, shape = padRect(8), color = Color(0xFF47435F)),
-    PadButton("R", "R", x = .78f, y = .10f, w = .14f, h = .07f, wOfWidth = true, shape = padRect(8), color = Color(0xFF47435F)),
-    PadButton("Up", icon = Icons.Default.KeyboardArrowUp, x = .183f, y = .475f, w = .065f, h = .065f, shape = padRect(2), color = Color(0xFF343B50)),
-    PadButton("Down", icon = Icons.Default.KeyboardArrowDown, x = .183f, y = .581f, w = .065f, h = .065f, shape = padRect(2), color = Color(0xFF343B50)),
-    PadButton("Left", icon = Icons.AutoMirrored.Filled.KeyboardArrowLeft, x = .130f, y = .528f, w = .065f, h = .065f, shape = padRect(2), color = Color(0xFF343B50)),
-    PadButton("Right", icon = Icons.AutoMirrored.Filled.KeyboardArrowRight, x = .236f, y = .528f, w = .065f, h = .065f, shape = padRect(2), color = Color(0xFF343B50)),
-    PadButton("Start", "▶", x = .498f, y = .704f, w = .09f, h = .08f, shape = padRect(5), color = Color(0xFF6E58D8)),
-    PadButton("X", "X", x = .730f, y = .397f, w = .095f, h = .095f, color = Color(0xFFCEB45E)),
-    PadButton("Y", "Y", x = .814f, y = .318f, w = .095f, h = .095f, color = Color(0xFF3C8D83)),
-    PadButton("A", "A", x = .814f, y = .479f, w = .095f, h = .095f, color = Color(0xFFBD625A)),
-    PadButton("B", "B", x = .909f, y = .397f, w = .095f, h = .095f, color = Color(0xFF6385C4)),
-), aspectRatio = 263f / 267f, artwork = { rememberAppIconPainter(R.drawable.ic_launcher_foreground) })
+    PadButton("L", "L", x = .19f, y = .10f, w = .15f, h = .07f, wOfWidth = true, shape = padRect(8), color = Color(0xFF47435F)),
+    PadButton("R", "R", x = .81f, y = .10f, w = .15f, h = .07f, wOfWidth = true, shape = padRect(8), color = Color(0xFF47435F)),
+    PadButton("Up", icon = Icons.Default.KeyboardArrowUp, x = .190f, y = .478f, w = .058f, h = .058f, shape = padRect(2), color = Color(0xFF343B50)),
+    PadButton("Down", icon = Icons.Default.KeyboardArrowDown, x = .190f, y = .582f, w = .058f, h = .058f, shape = padRect(2), color = Color(0xFF343B50)),
+    PadButton("Left", icon = Icons.AutoMirrored.Filled.KeyboardArrowLeft, x = .132f, y = .530f, w = .058f, h = .058f, shape = padRect(2), color = Color(0xFF343B50)),
+    PadButton("Right", icon = Icons.AutoMirrored.Filled.KeyboardArrowRight, x = .248f, y = .530f, w = .058f, h = .058f, shape = padRect(2), color = Color(0xFF343B50)),
+    PadButton("Start", "▶", x = .496f, y = .680f, w = .08f, h = .07f, shape = padRect(5), color = Color(0xFF6E58D8)),
+    PadButton("X", "X", x = .729f, y = .405f, w = .08f, h = .08f, color = Color(0xFFCEB45E)),
+    PadButton("Y", "Y", x = .815f, y = .334f, w = .08f, h = .08f, color = Color(0xFF3C8D83)),
+    PadButton("A", "A", x = .812f, y = .478f, w = .08f, h = .08f, color = Color(0xFFBD625A)),
+    PadButton("B", "B", x = .901f, y = .406f, w = .08f, h = .08f, color = Color(0xFF6385C4)),
+), aspectRatio = 267f / 298f, artwork = { rememberAppIconPainter(R.drawable.ic_launcher_foreground) })
 

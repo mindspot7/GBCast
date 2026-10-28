@@ -39,7 +39,7 @@ fun GBCastRoot(onQuit: () -> Unit) {
         var settingsPage by remember { mutableStateOf<SettingsPage?>(null) }
         val snackbar = remember { SnackbarHostState() }
         val scope = rememberCoroutineScope()
-        var recommendation by remember { mutableStateOf("Detecting this device…") }
+        var recommendation by remember { mutableStateOf("…") }
         androidx.compose.runtime.LaunchedEffect(setup) {
             if (!setup) recommendation = GBCastBridge.applyRecommendedPreset()
         }
@@ -67,14 +67,8 @@ fun GBCastRoot(onQuit: () -> Unit) {
                                 Text(if (GBCastBridge.gamesDir().isBlank()) "Choose games folder" else "Folder selected")
                             }
                         },
-                        WizardStep(
-                            Icons.Default.SportsEsports,
-                            "Performance",
-                            listOf(Color(0xFFFFB15A), Color(0xFF8A4B12)),
-                            "GBCast chooses a recommended renderer and resolution from the device class. You can change every option later in Performance. BIOS files can be copied from System.",
-                        ) {
-                            Text(recommendation)
-                        },
+                        gb.frame.performanceWizardStep("GBCast", recommendation, gb.frame.DeviceTier.detect().summary,
+                            "Renderer and internal resolution for this device class. BIOS files can be copied from System."),
                     ),
                     onFinish = {
                         GBCastBridge.finishSetup(ctx)

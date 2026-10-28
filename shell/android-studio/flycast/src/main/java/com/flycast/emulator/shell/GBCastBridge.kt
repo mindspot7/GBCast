@@ -130,7 +130,7 @@ object GBCastBridge {
             }
         }
         setBool("config", "Dynarec.Enabled", true)
-        return "$preset · ${device.summary}"
+        return preset // its name
     }
 
     fun deviceRecommendation(): String {

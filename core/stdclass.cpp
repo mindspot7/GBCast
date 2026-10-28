@@ -5,6 +5,9 @@
 #include "serialize.h"
 #include "oslib/storage.h"
 #include "oslib/i18n.h"
+#ifdef __ANDROID__
+#include "save_paths.hpp"
+#endif
 
 #include <chrono>
 #include <cstring>
@@ -139,7 +142,15 @@ size_t get_last_slash_pos(const std::string& path)
 
 std::string get_game_save_prefix()
 {
+#ifdef __ANDROID__
+	// Arcade NVRAM/EEPROM and cheats: saves/<Game>/<Game>.<ext>
+	const std::string game = gb::gameFolderName(settings.content.fileName);
+	make_directory(get_writable_data_path("saves"));
+	make_directory(get_writable_data_path("saves/" + game));
+	return get_writable_data_path("saves/" + game + "/" + game);
+#else
 	return get_writable_data_path(settings.content.fileName);
+#endif
 }
 
 bool make_directory(const std::string& path)

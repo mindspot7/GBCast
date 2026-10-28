@@ -38,29 +38,58 @@ object GBCastBridge {
     fun prepareDataFolder(context: Context, home: String) {
         if (::dataFolder.isInitialized) return
         statePreferences = android.preference.PreferenceManager.getDefaultSharedPreferences(context)
+        // The data folder holds only bios, saves, savestates, textures and covers; Flycast's caches stay in app storage
+        val legacy = File(home, "legacy-data")
         dataFolder = gb.frame.AppDataFolder(context, "GBCast", mapOf(
             "bios" to File(home, "data/bios"),
             "saves" to File(home, "data/saves"),
             "savestates" to File(home, "data/savestates"),
             "textures" to File(home, "data/textures"),
-            "data" to File(home, "data"),
             "covers" to File(context.filesDir, "gbcast/covers"),
-        ), texturesRelativePath = "textures")
+        ), texturesRelativePath = "textures", legacyMounts = mapOf("data" to legacy))
         System.loadLibrary("flycast")
         dataFolder.openAtStartup()
         File(home, "data/textures").mkdirs()
-        val old = File(home, "data")
-        for (file in old.listFiles().orEmpty().filter { it.isFile }) {
+        migrateLegacyData(legacy, File(home, "data"))
+        migrateLegacyData(File(home, "data"), File(home, "data"))
+    }
+
+    /**
+     * Older versions kept everything flat in a `data` folder. Moves BIOS files to bios/, VMUs and NVRAM to saves/
+     * (arcade NVRAM/EEPROM to saves/<Game>/<Game>.<ext>), states to savestates/<Game>/<Game>_<slot>.state and drops
+     * Flycast's caches; the folder is removed once empty. Files it doesn't know (a game image, say) stay.
+     */
+    private fun migrateLegacyData(old: File, data: File) {
+        val entries = old.listFiles() ?: return
+        for (file in entries) {
             val name = file.name
+            if (file.isDirectory) {
+                if (old != data && name in setOf("achievements", "boxart", "data", "textures")) {
+                    if (name == "textures") file.listFiles()?.forEach { gb.frame.DataLayout.move(it, File(data, "textures/${it.name}")) }
+                    else file.listFiles()?.forEach { if (it.isFile) it.delete() } // Flycast's caches (box art, achievements)
+                    if (file.listFiles()?.isEmpty() == true) file.delete()
+                }
+                continue
+            }
+            val state = Regex("""^(.+?)(?:_(\d+))?\.state$""").matchEntire(name)
+            val arcade = Regex("""^(.+?\.(?:zip|7z|lst|bin|dat))([.-](?:nvmem2?|eeprom|main\.eeprom|cht))$""", RegexOption.IGNORE_CASE).matchEntire(name)
             val destination = when {
-                name.endsWith("_nvmem.bin") -> File(old, "saves/$name")
+                name == "vulkan_pipeline.cache" -> { if (old != data) file.delete(); null }
+                name.endsWith("_nvmem.bin") -> File(data, "saves/$name")
                 name in DreamcastBios.sizes || name == "dc_boot.bin.bak" || name.startsWith("naomi") && (name.endsWith(".zip") || name.endsWith(".bin")) ||
-                    name.endsWith("bios.zip") -> File(old, "bios/$name")
-                name.startsWith("vmu_save_") || name.contains("_vmu_save_") -> File(old, "saves/$name")
+                    name.endsWith("bios.zip") -> File(data, "bios/$name")
+                name.startsWith("vmu_save_") || name.contains("_vmu_save_") -> File(data, "saves/$name")
+                arcade != null -> SaveData.gameFolderName(arcade.groupValues[1]).let { File(data, "saves/$it/$it${arcade.groupValues[2]}") }
+                state != null -> {
+                    val game = SaveData.gameFolderName(state.groupValues[1])
+                    val slot = (state.groupValues[2].toIntOrNull() ?: 0) + 1
+                    File(data, "savestates/$game/${game}_${if (slot == AUTO_SAVE_SLOT + 1) "auto" else slot.toString()}.state")
+                }
                 else -> null
             }
             if (destination != null) gb.frame.DataLayout.move(file, destination)
         }
+        if (old != data && old.listFiles()?.isEmpty() == true) old.delete()
     }
 
 

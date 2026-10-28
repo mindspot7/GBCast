@@ -1258,6 +1258,25 @@ static bool checkUWPProtocolActivation()
 
 static void gui_display_loadscreen()
 {
+#ifdef __ANDROID__
+	// The Android shell shows its own launch screen: no loading window, just start the game when it is ready
+	try {
+		if (gameLoader.ready() && !custom_texture.isPreloading())
+		{
+			if (NetworkHandshake::instance != nullptr)
+			{
+				networkStatus = NetworkHandshake::instance->start();
+				gui_setState(GuiState::NetworkStart);
+			}
+			else
+				gui_setState(GuiState::Closed);
+		}
+	} catch (const FlycastException& ex) {
+		ERROR_LOG(BOOT, "%s", ex.what());
+		gui_stop_game(ex.what());
+	}
+	return;
+#endif
 	drawBoxartBackground();
 	centerNextWindow();
 	ImGui::SetNextWindowSize(ScaledVec2(330, 0));

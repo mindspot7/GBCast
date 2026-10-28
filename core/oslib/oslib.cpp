@@ -50,6 +50,27 @@
 namespace hostfs
 {
 
+#ifdef __ANDROID__
+static bool copyFile(const std::string& from, const std::string& to)
+{
+	FILE *in = std::fopen(from.c_str(), "rb");
+	if (in == nullptr)
+		return false;
+	FILE *out = std::fopen(to.c_str(), "wb");
+	bool ok = out != nullptr;
+	char buffer[65536];
+	size_t n;
+	while (ok && (n = std::fread(buffer, 1, sizeof(buffer), in)) > 0)
+		ok = std::fwrite(buffer, 1, n, out) == n;
+	std::fclose(in);
+	if (out != nullptr && std::fclose(out) != 0)
+		ok = false;
+	if (!ok)
+		std::remove(to.c_str());
+	return ok;
+}
+#endif
+
 std::string getVmuPath(const std::string& port, bool save)
 {
 	std::string vmuName;
@@ -86,16 +107,31 @@ std::string getVmuPath(const std::string& port, bool save)
 	}
 	
 	// Fall back to default paths
-	#ifdef __ANDROID__
-    std::string folder = "saves/";
-    if (config::PerGameVmu && !settings.content.fileName.empty())
-        folder += gb::gameFolderName(settings.content.fileName) + "/";
+#ifdef __ANDROID__
+    // saves/<Game>/<Game>_VMU_A1.bin for a game's own VMU, saves/VMU_<port>.bin for the shared ones; files with the
+    // former names (<game id>_vmu_save_A1.bin, vmu_save_<port>.bin) are moved to the new name when found
     make_directory(get_writable_data_path("saves"));
-    make_directory(get_writable_data_path(folder));
-    std::string wpath = get_writable_data_path(folder + vmuName);
-    // A VMU from before the per-game folders stays in use where it is
-    if (!file_exists(wpath) && file_exists(get_writable_data_path("saves/" + vmuName)))
-        wpath = get_writable_data_path("saves/" + vmuName);
+    std::string wpath;
+    std::vector<std::string> legacy;
+    if (vmuName != "vmu_save_" + port + ".bin" && !settings.content.fileName.empty())
+    {
+        const std::string game = gb::gameFolderName(settings.content.fileName);
+        make_directory(get_writable_data_path("saves/" + game));
+        wpath = get_writable_data_path("saves/" + game + "/" + game + "_VMU_" + port + ".bin");
+        legacy = { get_writable_data_path("saves/" + game + "/" + vmuName), get_writable_data_path("saves/" + vmuName) };
+    }
+    else
+    {
+        wpath = get_writable_data_path("saves/VMU_" + port + ".bin");
+        legacy = { get_writable_data_path("saves/" + vmuName) };
+    }
+    if (!file_exists(wpath))
+        for (const auto& old : legacy)
+            if (file_exists(old) && copyFile(old, wpath))
+            {
+                std::remove(old.c_str());
+                break;
+            }
 #else
     std::string wpath = get_writable_data_path(vmuName);
 #endif

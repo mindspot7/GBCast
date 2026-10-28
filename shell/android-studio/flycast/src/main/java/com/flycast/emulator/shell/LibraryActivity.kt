@@ -56,9 +56,7 @@ class LibraryActivity : ComponentActivity() {
             } else if (ready) {
                 GBCastRoot(onQuit = ::quit)
             } else {
-                androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
-                    androidx.compose.material3.CircularProgressIndicator()
-                }
+                com.flycast.emulator.shell.ui.GBCastTheme { gb.frame.AppStartScreen(app.gbcast.emulator.R.drawable.ic_launcher_foreground) }
             }
         }
         hideSystemBars()

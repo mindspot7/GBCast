@@ -1,5 +1,6 @@
 package com.flycast.emulator.shell
 
+import app.gbcast.emulator.R as GBCastR
 import android.content.Context
 import android.content.Intent
 import com.flycast.emulator.Emulator
@@ -30,68 +31,24 @@ object GBCastBridge {
     private const val PREF_GAMES = "gbcast.gamesDir"
     private const val PREF_SETUP = "gbcast.setupDone"
     private var sharedRaInitialized = false
-    private lateinit var statePreferences: android.content.SharedPreferences
     lateinit var dataFolder: gb.frame.AppDataFolder
         private set
 
     @JvmStatic
     fun prepareDataFolder(context: Context, home: String) {
         if (::dataFolder.isInitialized) return
-        statePreferences = android.preference.PreferenceManager.getDefaultSharedPreferences(context)
         // The data folder holds only bios, saves, savestates, textures and covers; Flycast's caches stay in app storage
-        val legacy = File(home, "legacy-data")
         dataFolder = gb.frame.AppDataFolder(context, "GBCast", mapOf(
             "bios" to File(home, "data/bios"),
             "saves" to File(home, "data/saves"),
             "savestates" to File(home, "data/savestates"),
             "textures" to File(home, "data/textures"),
             "covers" to File(context.filesDir, "gbcast/covers"),
-        ), texturesRelativePath = "textures", legacyMounts = mapOf("data" to legacy))
+        ), texturesRelativePath = "textures")
         System.loadLibrary("flycast")
         dataFolder.openAtStartup()
         File(home, "data/textures").mkdirs()
-        migrateLegacyData(legacy, File(home, "data"))
-        migrateLegacyData(File(home, "data"), File(home, "data"))
     }
-
-    /**
-     * Older versions kept everything flat in a `data` folder. Moves BIOS files to bios/, VMUs and NVRAM to saves/
-     * (arcade NVRAM/EEPROM to saves/<Game>/<Game>.<ext>), states to savestates/<Game>/<Game>_<slot>.state and drops
-     * Flycast's caches; the folder is removed once empty. Files it doesn't know (a game image, say) stay.
-     */
-    private fun migrateLegacyData(old: File, data: File) {
-        val entries = old.listFiles() ?: return
-        for (file in entries) {
-            val name = file.name
-            if (file.isDirectory) {
-                if (old != data && name in setOf("achievements", "boxart", "data", "textures")) {
-                    if (name == "textures") file.listFiles()?.forEach { gb.frame.DataLayout.move(it, File(data, "textures/${it.name}")) }
-                    else file.listFiles()?.forEach { if (it.isFile) it.delete() } // Flycast's caches (box art, achievements)
-                    if (file.listFiles()?.isEmpty() == true) file.delete()
-                }
-                continue
-            }
-            val state = Regex("""^(.+?)(?:_(\d+))?\.state$""").matchEntire(name)
-            val arcade = Regex("""^(.+?\.(?:zip|7z|lst|bin|dat))([.-](?:nvmem2?|eeprom|main\.eeprom|cht))$""", RegexOption.IGNORE_CASE).matchEntire(name)
-            val destination = when {
-                name == "vulkan_pipeline.cache" -> { if (old != data) file.delete(); null }
-                name.endsWith("_nvmem.bin") -> File(data, "saves/$name")
-                name in DreamcastBios.sizes || name == "dc_boot.bin.bak" || name.startsWith("naomi") && (name.endsWith(".zip") || name.endsWith(".bin")) ||
-                    name.endsWith("bios.zip") -> File(data, "bios/$name")
-                name.startsWith("vmu_save_") || name.contains("_vmu_save_") -> File(data, "saves/$name")
-                arcade != null -> SaveData.gameFolderName(arcade.groupValues[1]).let { File(data, "saves/$it/$it${arcade.groupValues[2]}") }
-                state != null -> {
-                    val game = SaveData.gameFolderName(state.groupValues[1])
-                    val slot = (state.groupValues[2].toIntOrNull() ?: 0) + 1
-                    File(data, "savestates/$game/${game}_${if (slot == AUTO_SAVE_SLOT + 1) "auto" else slot.toString()}.state")
-                }
-                else -> null
-            }
-            if (destination != null) gb.frame.DataLayout.move(file, destination)
-        }
-        if (old != data && old.listFiles()?.isEmpty() == true) old.delete()
-    }
-
 
     var disc: OpenDisc? = null
         private set
@@ -106,6 +63,9 @@ object GBCastBridge {
         PlayTime.init(prefs)
         Thread({ DeviceTier.detect() }, "gbcast-device-tier").start()
         Covers.init(File(app.filesDir, "gbcast"), "Sega - Dreamcast", frameAspectRatio = 1.0f)
+        // What the library's first frames need, ready before it shows (no decoding while it appears)
+        gb.frame.preloadAppIcon(app.resources, GBCastR.drawable.ic_launcher_foreground)
+        Covers.preloadCached(Storage.cachedScan(Storage.gamesDir).take(40).map { it.title })
         app.ensureCore()?.let { error -> throw IllegalStateException(error) }
         JNIdc.initAutoSkip()
         com.flycast.emulator.shell.ui.GBCastOverlayOptions.initialize(app)
@@ -199,7 +159,6 @@ object GBCastBridge {
         }
         val opened = withContext(Dispatchers.IO) { Storage.openForCore(safPath) }
             ?: return "Could not open this game. Check the folder permission and the disc files."
-        migrateStates(safPath)
         disc?.close()
         disc = opened
         PlayTime.update(safPath, true)
@@ -234,24 +193,10 @@ object GBCastBridge {
 
     private fun stateLabel(slot: Int) = if (slot == AUTO_SAVE_SLOT) "auto" else (slot + 1).toString()
     private fun stateFile(game: String, slot: Int) = gb.frame.DataLayout.stateFile(dataDir(), game, stateLabel(slot))
-    private fun migrateStates(game: String) {
-        val base = Storage.fileName(game).substringBeforeLast('.')
-        val mover = gb.frame.SaveStateFiles(dataDir(), statePreferences)
-        for (slot in 0..AUTO_SAVE_SLOT) {
-            val suffix = if (slot == 0) "" else "_$slot"
-            mover.moveFamily(File(dataDir(), "$base$suffix.state"), stateFile(game, slot))
-        }
-    }
-
     /** The last [states] result, shown at once when the library opens again. */
     @Volatile var lastStates: List<SaveSlot> = emptyList()
         private set
     fun states(games: List<gb.frame.Game>): List<SaveSlot> {
-        val legacy = dataDir().listFiles().orEmpty().filter { it.isFile && it.name.endsWith(".state") }.map { it.name }.toSet()
-        for (game in games) {
-            val base = Storage.fileName(game.path).substringBeforeLast('.')
-            if ((0..AUTO_SAVE_SLOT).any { "$base${if (it == 0) "" else "_$it"}.state" in legacy }) migrateStates(game.path)
-        }
         val byName = games.associateBy { SaveData.gameFolderName(it.path) }
         val out = mutableListOf<SaveSlot>()
         for (dir in File(dataDir(), "savestates").listFiles().orEmpty().filter { it.isDirectory }) {

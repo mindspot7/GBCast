@@ -107,6 +107,9 @@ dependencies {
     implementation(libs.lifecycle.runtime.compose)
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)
+    // Installs the baseline profiles (Compose's own and src/main/baseline-prof.txt) on sideloaded APKs, so the UI runs
+    // compiled from the first launch instead of interpreted until the device compiles it while idle
+    implementation("androidx.profileinstaller:profileinstaller:1.4.1")
     implementation(libs.compose.icons)
     implementation(project(":gbframe"))
     implementation(libs.commons.lang3)

@@ -160,6 +160,7 @@ fun LibraryScreen(
             scanError = null
             return@LaunchedEffect
         }
+        if (games.isNotEmpty() && scanError == null && !Storage.scanStale(dir)) return@LaunchedEffect // scanned a moment ago
         loading = games.isEmpty()
         val scanned = withContext(Dispatchers.IO) {
             runCatching {

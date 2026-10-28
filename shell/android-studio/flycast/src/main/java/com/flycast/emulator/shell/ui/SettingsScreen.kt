@@ -313,8 +313,9 @@ private fun VideoPage(tick: Int, cfg: Cfg) {
         }
         SettingsDivider()
         ChoiceRow("Display mode", "Fullscreen stretches the picture; Super widescreen expands the view to the screen ratio.",
-            DisplayMode.entries.map { it.label }, DisplayMode.current(cfg::bool).ordinal) { selected ->
+            DisplayMode.entries.map { it.label }, GBCastBridge.globalDisplay().ordinal) { selected ->
             DisplayMode.entries[selected].apply(cfg::setBool)
+            GBCastBridge.setGlobalDisplay(DisplayMode.entries[selected])
             cfg.setInt("config", "rend.ScreenStretching", 100)
         }
         SettingsDivider()

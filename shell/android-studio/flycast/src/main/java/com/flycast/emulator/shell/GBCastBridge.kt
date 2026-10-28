@@ -56,6 +56,7 @@ object GBCastBridge {
     fun start(context: Context) {
         val app = context.applicationContext as Emulator
         val prefs = android.preference.PreferenceManager.getDefaultSharedPreferences(app)
+        displayPrefs = prefs
         Storage.gamesDir = prefs.getString(PREF_GAMES, "") ?: ""
         Storage.start(app)
         HomeTheme.init(prefs)
@@ -68,6 +69,9 @@ object GBCastBridge {
         Covers.preloadCached(Storage.cachedScan(Storage.gamesDir).take(40).map { it.title })
         app.ensureCore()?.let { error -> throw IllegalStateException(error) }
         JNIdc.initAutoSkip()
+        // The global display mode as Settings last left it (before the per-game choices existed it lived only in the
+        // emulator config, which a game's own choice overwrites)
+        if (!prefs.contains("display")) prefs.edit().putString("display", DisplayMode.current(::bool).name).apply()
         com.flycast.emulator.shell.ui.GBCastOverlayOptions.initialize(app)
         com.flycast.emulator.shell.ui.GBCastCheatDatabase.initialize(app)
         val savedSlot = int("config", "Dreamcast.SavestateSlot")
@@ -139,6 +143,25 @@ object GBCastBridge {
         return "$preset · ${device.summary}"
     }
 
+    // Display mode: the global choice (Settings) and one per game (the in-game menu), applied when a game starts
+    private lateinit var displayPrefs: android.content.SharedPreferences
+    private fun displayKey(game: String) = "display:" + SaveData.gameFolderName(game)
+    fun setGlobalDisplay(mode: DisplayMode) {
+        displayPrefs.edit().putString("display", mode.name).apply()
+        mode.apply(::setBool)
+    }
+    fun setGameDisplay(game: String, mode: DisplayMode) {
+        displayPrefs.edit().putString(displayKey(game), mode.name).apply()
+        mode.apply(::setBool)
+    }
+    fun globalDisplay(): DisplayMode =
+        DisplayMode.entries.firstOrNull { it.name == displayPrefs.getString("display", null) } ?: DisplayMode.current(::bool)
+    private fun displayFor(game: String): DisplayMode {
+        fun parse(v: String?) = DisplayMode.entries.firstOrNull { it.name == v }
+        return parse(displayPrefs.getString(displayKey(game), null)) ?: parse(displayPrefs.getString("display", null))
+            ?: DisplayMode.current(::bool)
+    }
+
     fun bool(section: String, name: String) = JNIdc.configGetBool(section, name)
 
     fun setBool(section: String, name: String, value: Boolean): Boolean = JNIdc.configSetBool(section, name, value)
@@ -162,6 +185,7 @@ object GBCastBridge {
         disc?.close()
         disc = opened
         PlayTime.update(safPath, true)
+        displayFor(safPath).apply(::setBool)
         val auto = bool("config", "Dreamcast.AutoLoadState")
         val launchSlot = when {
             slot >= 0 -> slot

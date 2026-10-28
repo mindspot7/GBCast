@@ -265,7 +265,10 @@ object GbcastGameUi {
                     id = "display-mode", icon = androidx.compose.material.icons.Icons.Default.AspectRatio,
                     label = "Display mode", value = displayMode.label,
                 ) {
-                    DisplayMode.entries[(displayMode.ordinal + 1) % DisplayMode.entries.size].apply(::setBool)
+                    // Kept for this game only (Settings holds the default for the others)
+                    val next = DisplayMode.entries[(displayMode.ordinal + 1) % DisplayMode.entries.size]
+                    GBCastBridge.setGameDisplay(JNIdc.currentGamePath().orEmpty(), next)
+                    tick++
                     setInt("config", "rend.ScreenStretching", 100)
                 }
 

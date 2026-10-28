@@ -390,6 +390,13 @@ static void loadSpecialSettings()
 			NOTICE_LOG(BOOT, "Forcing DCNet use");
 			config::UseDCNet.override(true);
 		}
+		// The widescreen modes draw past the 4:3 frame; these games clip their own picture (black sides, loose HUD)
+		if (prod_id == "T38706M")			// Ikaruga
+		{
+			NOTICE_LOG(BOOT, "Widescreen not supported: 4:3");
+			config::Widescreen.override(false);
+			config::SuperWidescreen.override(false);
+		}
 		if ((prod_id == "HDR-0164"			// Shenmue II (JP)
 				|| prod_id == "MK-5118450")	// Shenmue II (EU)
 				&& !memcmp(ip_meta.disk_num, "4/4  ", 5))

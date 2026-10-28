@@ -401,6 +401,26 @@ void CheatManager::removeCheat(size_t index)
 #endif
 }
 
+void CheatManager::enableCheat(size_t index, bool enabled)
+{
+	if (index >= cheats.size() || cheats[index].builtIn || cheats[index].enabled == enabled)
+		return;
+
+	cheats[index].enabled = enabled;
+#ifndef LIBRETRO
+	if (!gameId.empty())
+	{
+		std::string path = config::loadStr("cheats", gameId);
+		if (path.empty())
+		{
+			path = get_game_save_prefix() + ".cht";
+			config::saveStr("cheats", gameId, path);
+		}
+		saveCheatFile(path);
+	}
+#endif
+}
+
 void CheatManager::loadCheatFile(const std::string& filename, bool append)
 {
 #ifndef LIBRETRO

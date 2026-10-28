@@ -78,7 +78,7 @@ public:
 	const std::string& cheatDescription(size_t index) const { return cheats[index].description; }
 	bool cheatEnabled(size_t index) const { return cheats[index].enabled; }
 	bool cheatBuiltIn(size_t index) const { return index < cheats.size() && cheats[index].builtIn; }
-	void enableCheat(size_t index, bool enabled) { cheats[index].enabled = enabled; }
+	void enableCheat(size_t index, bool enabled);
 	void removeCheat(size_t index);
 	void loadCheatFile(const std::string& filename, bool append = false);
 	size_t importCheatFile(const std::string& filename);

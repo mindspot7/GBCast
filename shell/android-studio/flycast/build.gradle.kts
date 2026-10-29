@@ -3,11 +3,10 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
-fun gitVersionName(): String {
-    return providers.exec {
-        commandLine("git", "describe", "--tags", "--always")
-    }.standardOutput.asText.get().trim()
-}
+// Version: shell/android-studio/VERSION holds the release version (x.y.z); the build number is the version code
+// (CI's version_code input, or -PgbcastVersionCode for local builds).
+val gbcastVersion = rootProject.file("VERSION").readText().trim()
+val gbcastBuild = (providers.gradleProperty("gbcastVersionCode").orNull ?: System.getenv("GBCAST_VERSION_CODE") ?: "8").toInt()
 
 android {
     namespace = "app.gbcast.emulator"
@@ -24,9 +23,8 @@ android {
         // GBCast uses its own application ID and matching namespace.
         minSdk = 28
         targetSdk = 36
-        // CI can supply a unique build number without rewriting this tracked file.
-        versionCode = providers.gradleProperty("gbcastVersionCode").orNull?.toInt() ?: 8
-        versionName = gitVersionName()
+        versionCode = gbcastBuild
+        versionName = "$gbcastVersion (build $gbcastBuild)"
         vectorDrawables.useSupportLibrary = true
 
         externalNativeBuild {
@@ -45,11 +43,19 @@ android {
         getByName("debug") {
             storeFile = file("../debug.keystore")
         }
+        // Permanent release key: CI decodes the GBCAST_KEYSTORE_BASE64 secret to GBCAST_KEYSTORE_FILE (local builds point
+        // it at the owner's copy). Every APK signed with it installs over the previous one. Without it (forks) the
+        // repository's debug keystore is used, which can't update a released GBCast.
+        val releaseKey = System.getenv("GBCAST_KEYSTORE_FILE")?.let { file(it) }?.takeIf { it.exists() }
         create("release") {
-            storeFile = file("../playstore.jks")
-            storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
-            keyAlias = "uploadkey"
-            keyPassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+            if (releaseKey != null) {
+                storeFile = releaseKey
+                storePassword = System.getenv("GBCAST_KEYSTORE_PASSWORD")
+                keyAlias = "gbcast"
+                keyPassword = System.getenv("GBCAST_KEYSTORE_PASSWORD")
+            } else {
+                initWith(getByName("debug"))
+            }
         }
     }
 
@@ -66,12 +72,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // CI APKs use the debug key; official releases keep the release signing configuration.
-            signingConfig = if (providers.gradleProperty("gbcastCiDebugSigning").orNull == "true") {
-                signingConfigs.getByName("debug")
-            } else {
-                signingConfigs.getByName("release")
-            }
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {

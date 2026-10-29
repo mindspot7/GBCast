@@ -339,6 +339,8 @@ private fun VideoPage(tick: Int, cfg: Cfg) {
     SettingsGroup("Textures", Icons.Default.Tv) {
         ToggleRow(Icons.Default.Tv, "Custom textures", "Load texture packs from data/textures/<game ID> in the selected data folder after reopening the app.",
             cfg.bool("config", "rend.CustomTextures")) { cfg.setBool("config", "rend.CustomTextures", it) }
+        SettingsDivider()
+        gb.frame.TexturePackImportRow(GBCastBridge.texturesFolder())
     }
     SettingsGroup("Accuracy", null) {
         ToggleRow(Icons.Default.Tune, "Per-strip sorting", "Off uses per-triangle sorting.", cfg.bool("config", "rend.PerStripSorting")) { cfg.toggle("config", "rend.PerStripSorting") }

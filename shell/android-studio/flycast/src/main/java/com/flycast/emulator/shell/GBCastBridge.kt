@@ -33,16 +33,19 @@ object GBCastBridge {
     private var sharedRaInitialized = false
     lateinit var dataFolder: gb.frame.AppDataFolder
         private set
+    private lateinit var textures: File
+    fun texturesFolder(): java.io.File = textures
 
     @JvmStatic
     fun prepareDataFolder(context: Context, home: String) {
         if (::dataFolder.isInitialized) return
         // The data folder holds only bios, saves, savestates, textures and covers; Flycast's caches stay in app storage
+        textures = File(home, "data/textures")
         dataFolder = gb.frame.AppDataFolder(context, "GBCast", mapOf(
             "bios" to File(home, "data/bios"),
             "saves" to File(home, "data/saves"),
             "savestates" to File(home, "data/savestates"),
-            "textures" to File(home, "data/textures"),
+            "textures" to textures,
             "covers" to File(context.filesDir, "gbcast/covers"),
         ), texturesRelativePath = "textures")
         System.loadLibrary("flycast")

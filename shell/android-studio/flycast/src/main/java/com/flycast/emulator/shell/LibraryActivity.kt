@@ -60,6 +60,13 @@ class LibraryActivity : ComponentActivity() {
             }
         }
         hideSystemBars()
+        // A game requested by a frontend or `am start` (gb.frame.LaunchIntent); started by GBCastRoot once the app is ready
+        if (savedInstanceState == null) gb.frame.LaunchIntent.handle(this, intent)
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        gb.frame.LaunchIntent.handle(this, intent)
     }
 
     override fun onResume() {

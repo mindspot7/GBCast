@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import com.flycast.emulator.shell.GBCastBridge
+import com.flycast.emulator.shell.Storage
 import gb.frame.SetupWizard
 import gb.frame.WizardStep
 import gb.frame.MenuState
@@ -42,6 +43,21 @@ fun GBCastRoot(onQuit: () -> Unit) {
         var recommendation by remember { mutableStateOf("…") }
         androidx.compose.runtime.LaunchedEffect(setup) {
             if (!setup) recommendation = GBCastBridge.applyRecommendedPreset()
+        }
+        // Game requested by an intent (frontends, `am start`): matched to the library by file name, then started like a
+        // tap on its cover (auto load included)
+        val requested = gb.frame.LaunchIntent.pending.value
+        androidx.compose.runtime.LaunchedEffect(requested, setup) {
+            if (requested == null || !setup) return@LaunchedEffect
+            gb.frame.LaunchIntent.done() // changes this effect's key: the work runs in the root scope so it isn't cancelled
+            scope.launch {
+                val games = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    Storage.cachedScan(Storage.gamesDir).ifEmpty { Storage.scan(Storage.gamesDir) }
+                }
+                val game = gb.frame.LaunchIntent.resolve(requested, games)
+                val err = if (game == null) gb.frame.LaunchIntent.notFound(requested) else GBCastBridge.launch(ctx, game.path)
+                err?.let { snackbar.showSnackbar(it) }
+            }
         }
 
         Surface(Modifier.fillMaxSize(), color = androidx.compose.material3.MaterialTheme.colorScheme.background) {

@@ -136,6 +136,25 @@ object GBCastBridge {
         return preset // its name
     }
 
+    fun presetWizardOptions(preset: String): List<String> {
+        val device = DeviceTier.detect()
+        val (renderer, resolution) = when (preset) {
+            "Compatible" -> "CPU (OpenGL)" to "480p"
+            "Quality" -> "GPU (Vulkan)" to "${device.gpuMaxScale.coerceIn(2, 4)}x native"
+            else -> "CPU (OpenGL)" to "960p"
+        }
+        val options = mutableListOf(
+            "Renderer: $renderer",
+            "Internal resolution: $resolution",
+            "Flycast dynarec: On",
+        )
+        if (preset == "Balanced") {
+            options += "VSync: On"
+            options += "Frame pacing: On"
+        }
+        return options
+    }
+
     fun deviceRecommendation(): String {
         val device = DeviceTier.detect()
         val preset = when (device.tier) {

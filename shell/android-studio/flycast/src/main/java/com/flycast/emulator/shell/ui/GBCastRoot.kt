@@ -83,8 +83,7 @@ fun GBCastRoot(onQuit: () -> Unit) {
                                 Text(if (GBCastBridge.gamesDir().isBlank()) "Choose games folder" else "Folder selected")
                             }
                         },
-                        gb.frame.performanceWizardStep("GBCast", recommendation, gb.frame.DeviceTier.detect().summary,
-                            "Renderer and internal resolution for this device class. BIOS files can be copied from System."),
+                        gb.frame.performanceWizardStep(recommendation, GBCastBridge.presetWizardOptions(recommendation)),
                     ),
                     onFinish = {
                         GBCastBridge.finishSetup(ctx)

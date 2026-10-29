@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Use GBFrame's shared widescreen game hacks toggle in Video settings and the in-game Video menu.
+- Move supported 60 FPS patches to the in-game Performance menu; enable them by default for compatible games, except in RetroAchievements Hardcore.
 
 ## 0.4.0
 First release of GBCast, the Sega Dreamcast, Naomi, Naomi 2 and Atomiswave emulator for Android of the GB family (Flycast core, GBFrame interface).

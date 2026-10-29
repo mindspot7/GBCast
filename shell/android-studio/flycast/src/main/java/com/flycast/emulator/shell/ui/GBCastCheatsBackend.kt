@@ -10,6 +10,7 @@ import gb.frame.CheatPatchControl
 import gb.frame.CheatActionResult
 import gb.frame.CheatUiItem
 import gb.frame.CheatsBackend
+import gb.frame.GameHackPolicy
 
 /**
  * Flycast adapter for GBFrame's common Cheats screen.
@@ -40,6 +41,13 @@ object GBCastCheatsBackend : CheatsBackend {
             val description = JNIdc.cheatDescription(index).orEmpty()
             if (prefix != null) description.startsWith(prefix) else description in databaseCheats
         }
+    }
+
+    /** Apply the shared on-by-default policy once a game has loaded, without overriding a saved off state. */
+    fun applyDefaultFrameRatePatch() {
+        if (!GameHackPolicy.shouldApply(GameHackPolicy.DEFAULT_ENABLED, blockedMessage != null)) return
+        if (frameRatePatch == null || frameRatePatchCheatIndices().isNotEmpty()) return
+        setFrameRatePatchEnabled(true)
     }
 
     override val frameRatePatch: CheatPatchControl?

@@ -750,7 +750,7 @@ void CheatManager::writeRam(u32 addr, u32 value, u32 bits)
 
 void CheatManager::apply()
 {
-	if (widescreen_cheat != nullptr)
+	if (widescreen_cheat != nullptr && config::WidescreenGameHacks && !settings.raHardcoreMode)
 	{
 		for (size_t i = 0; i < std::size(widescreen_cheat->addresses) && widescreen_cheat->addresses[i] != 0; i++)
 		{
@@ -760,7 +760,7 @@ void CheatManager::apply()
 				writeRam(address, widescreen_cheat->values[i], 32);
 		}
 	}
-	if (active)
+	if (active && !settings.raHardcoreMode)
 	{
 		bool skipCheat = false;
 		for (const Cheat& cheat : cheats)

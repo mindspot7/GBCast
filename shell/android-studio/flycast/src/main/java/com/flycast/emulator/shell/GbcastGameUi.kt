@@ -82,6 +82,18 @@ object GbcastGameUi {
                         com.flycast.emulator.shell.ui.GBCastGameplayOverlays(visible) { onAndroidBack(activity) }
                         if (visible) QuickMenu(activity)
                     }
+                    androidx.compose.runtime.LaunchedEffect(activity) {
+                        repeat(16) {
+                            if (JNIdc.currentGamePath().isNotBlank() && gb.frame.LibraryView.lastGame != null) {
+                                com.flycast.emulator.shell.ui.GBCastCheatsBackend.applyDefaultFrameRatePatch()
+                                kotlinx.coroutines.delay(500)
+                                // Retry after core game initialization in case the first poll was early.
+                                com.flycast.emulator.shell.ui.GBCastCheatsBackend.applyDefaultFrameRatePatch()
+                                return@LaunchedEffect
+                            }
+                            delay(250)
+                        }
+                    }
                 }
             }
             visibility = View.VISIBLE
@@ -372,6 +384,17 @@ object GbcastGameUi {
                     id = "auto-frame-skip", icon = androidx.compose.material.icons.Icons.Default.Speed,
                     label = "Auto frame skip", value = skips[skipIndex].second,
                 ) { setInt("config", "pvr.AutoSkipFrame", skips[(skipIndex + 1) % skips.size].first) }
+                val frameRatePatch = com.flycast.emulator.shell.ui.GBCastCheatsBackend.frameRatePatch
+                if (frameRatePatch != null) {
+                    gb.frame.FrameRateHackItem(
+                        control = frameRatePatch,
+                        enabled = com.flycast.emulator.shell.ui.GBCastCheatsBackend.blockedMessage == null,
+                    ) { enabled ->
+                        val result = com.flycast.emulator.shell.ui.GBCastCheatsBackend.setFrameRatePatchEnabled(enabled)
+                        result.message?.let(toast)
+                        tick++
+                    }
+                }
             }
         }
 

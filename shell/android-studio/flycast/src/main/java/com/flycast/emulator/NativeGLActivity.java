@@ -72,6 +72,8 @@ public final class NativeGLActivity extends BaseGLActivity {
         com.flycast.emulator.shell.GbcastGameUi.attach(this, mLayout, mView);
         DreamcastControls.INSTANCE.initialize(this);
         inputManager = (InputManager) getSystemService(Context.INPUT_SERVICE);
+        // Touch controls from the first frame only when there is no physical controller (they start hidden in the core)
+        updateTouchControlsVisibility();
         if (inputManager != null) inputManager.registerInputDeviceListener(gamepadListener, null);
         DreamcastControls.configureHotkeys();
         wantLoad = getIntent().getBooleanExtra("gbcast_load_state", false);

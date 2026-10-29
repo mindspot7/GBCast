@@ -55,9 +55,11 @@ struct Control
 	bool disabled = false;
 };
 static Control Controls[_Count];
-static bool Visible = true;
+// GBCast: hidden until the app shows it (NativeGLActivity, only without a physical controller). Starting visible
+// drew the touch controls over the BIOS boot on handhelds, before the app could hide them.
+static bool Visible = false;
 static bool serviceMode;
-static float AlphaTrans = 1.f;
+static float AlphaTrans = 0.f;
 static ImVec2 StickPos;	// analog stick position [-1, 1]
 constexpr char const *BTN_PATH = "picture/buttons.png";
 constexpr char const *BTN_PATH_ARCADE = "picture/buttons-arcade.png";

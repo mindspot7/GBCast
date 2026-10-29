@@ -403,6 +403,8 @@ public:
 };
 extern AudioVolumeOption AudioVolume;
 extern Option<bool> VmuSound;
+// GBCast: audio while fast-forwarding (the GBFrame standard): 0 default (normal pitch, in pieces), 1 speed up, 2 mute
+extern Option<int> FastForwardAudio;
 
 // Rendering
 

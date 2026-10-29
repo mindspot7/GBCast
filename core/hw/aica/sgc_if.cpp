@@ -1593,7 +1593,8 @@ void AICA_Sample()
 #ifdef LIBRETRO
 	if (settings.aica.muteAudio)
 #else
-	if (settings.input.fastForwardMode || gbcast::AutoSkipActive() || settings.aica.muteAudio)
+	// GBCast: fast-forward is muted only in the "Mute" mode (audiostream handles the other two)
+	if ((settings.input.fastForwardMode && config::FastForwardAudio == 2) || gbcast::AutoSkipActive() || settings.aica.muteAudio)
 #endif
 		return;
 

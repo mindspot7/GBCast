@@ -1,6 +1,8 @@
 #include "audiostream.h"
 #include "cfg/option.h"
 #include "emulator.h"
+#include <algorithm>
+#include <chrono>
 
 static void registerForEvents();
 
@@ -48,15 +50,53 @@ AudioBackend *AudioBackend::getBackend(const std::string& slug)
 	return nullptr;
 }
 
+#ifndef LIBRETRO
+// GBCast fast-forward audio "Speed up": keeps 1 sample in <speed>, so the audio plays faster (and higher) like the
+// game. The speed is the emulated audio time over the real time, measured every 0.1 s of emulated audio.
+static bool keepFastForwardSample()
+{
+	using clock = std::chrono::steady_clock;
+	static clock::time_point last;
+	static u32 count;
+	static float speed = 1.f;
+	static float acc;
+	if (++count >= 4410)
+	{
+		const clock::time_point now = clock::now();
+		const float dt = std::chrono::duration<float>(now - last).count();
+		// The first measure after fast-forward starts covers the time spent at normal speed: it comes out ~1x
+		speed = 0.5f * speed + 0.5f * std::clamp(dt > 0.f ? 0.1f / dt : 1.f, 1.f, 16.f);
+		last = now;
+		count = 0;
+	}
+	acc += 1.f / speed;
+	if (acc < 1.f)
+		return false;
+	acc -= 1.f;
+	return true;
+}
+#endif
+
 void WriteSample(s16 r, s16 l)
 {
+	bool wait = config::LimitFPS;
+#ifndef LIBRETRO
+	if (settings.input.fastForwardMode)
+	{
+		// Never wait for the audio output while fast-forwarding (it would hold the game at normal speed); "Default"
+		// plays what fits at normal pitch, "Speed up" keeps fewer samples. "Mute" never gets here (sgc_if).
+		wait = false;
+		if (config::FastForwardAudio == 1 && !keepFastForwardSample())
+			return;
+	}
+#endif
 	Buffer[writePtr].r = r * config::AudioVolume.dbPower();
 	Buffer[writePtr].l = l * config::AudioVolume.dbPower();
 
 	if (++writePtr == SAMPLE_COUNT)
 	{
 		if (currentBackend != nullptr)
-			currentBackend->push(Buffer, SAMPLE_COUNT, config::LimitFPS);
+			currentBackend->push(Buffer, SAMPLE_COUNT, wait);
 		writePtr = 0;
 	}
 }

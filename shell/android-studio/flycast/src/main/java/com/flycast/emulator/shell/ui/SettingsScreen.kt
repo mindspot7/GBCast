@@ -359,7 +359,9 @@ private fun VideoPage(tick: Int, cfg: Cfg) {
 private fun AudioPage(tick: Int, cfg: Cfg) {
     val samples = cfg.int("config", "aica.BufferSize")
     val latency = if (samples == Int.MIN_VALUE) 2 else listOf(64, 96, 128).indices.minByOrNull { kotlin.math.abs(listOf(64, 96, 128)[it] - samples * 1000 / 44100) } ?: 2
-    SettingsGroup("Audio", Icons.AutoMirrored.Filled.VolumeUp) {
+    // The kit's standard options first, then Flycast's own
+    gb.frame.AudioSettingsGroups(GBCastAudio)
+    SettingsGroup("Sound chip (AICA)", Icons.AutoMirrored.Filled.VolumeUp) {
         ToggleRow(Icons.AutoMirrored.Filled.VolumeUp, "DSP", "aica.DSPEnabled", cfg.bool("config", "aica.DSPEnabled")) { cfg.toggle("config", "aica.DSPEnabled") }
         SettingsDivider()
         ToggleRow(Icons.AutoMirrored.Filled.VolumeUp, "Auto latency", "aica.AutoLatency", cfg.bool("config", "aica.AutoLatency")) { cfg.toggle("config", "aica.AutoLatency") }

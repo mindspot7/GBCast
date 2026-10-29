@@ -319,7 +319,8 @@ object GbcastGameUi {
 
         val audioPage = androidx.compose.runtime.remember {
             gb.frame.QuickMenuPage("audio", "Audio") {
-
+                // The kit's standard rows first, then Flycast's own
+                gb.frame.AudioQuickMenuRows(com.flycast.emulator.shell.ui.GBCastAudio)
                 for ((key, label) in listOf(
                     "aica.DSPEnabled" to "DSP",
                     "aica.AutoLatency" to "Automatic latency",

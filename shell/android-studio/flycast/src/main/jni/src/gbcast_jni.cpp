@@ -244,6 +244,11 @@ static int getLanguage() { return config::Language; }
 static void setLanguage(int v) { config::Language = v; }
 static int getAudio() { return config::AudioBufferSize; }
 static void setAudio(int v) { config::AudioBufferSize = v; }
+// The volume's dB scale is only recomputed on load(): do it here so a change is heard at once
+static int getVolume() { return config::AudioVolume; }
+static void setVolume(int v) { config::AudioVolume.set(std::clamp(v, 0, 100)); config::AudioVolume.calcDbPower(); }
+static int getFfAudio() { return config::FastForwardAudio; }
+static void setFfAudio(int v) { config::FastForwardAudio = std::clamp(v, 0, 2); }
 static int getPad() { return (int)(MapleDeviceType)config::MapleMainDevices[0]; }
 static void setPad(int v) { config::MapleMainDevices[0] = (MapleDeviceType)v; }
 static int getVibe() { return config::VirtualGamepadVibration; }
@@ -269,6 +274,8 @@ static const IntOpt kInts[] = {
 	{"config", "Dreamcast.Broadcast", getBroadcast, setBroadcast},
 	{"config", "Dreamcast.Language", getLanguage, setLanguage},
 	{"config", "aica.BufferSize", getAudio, setAudio},
+	{"config", "aica.Volume", getVolume, setVolume},
+	{"config", "aica.FastForwardAudio", getFfAudio, setFfAudio},
 	{"input", "device1", getPad, setPad},
 	{"input", "VirtualGamepadVibration", getVibe, setVibe},
 	{"config", "Dreamcast.SavestateSlot", getSlot, setSlot},

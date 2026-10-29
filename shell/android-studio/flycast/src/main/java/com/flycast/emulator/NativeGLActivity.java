@@ -67,6 +67,8 @@ public final class NativeGLActivity extends BaseGLActivity {
         mLayout.addView(mView);
 
         setContentView(mLayout);
+        // Immersive from the first frame: waiting for the window focus showed the status bar while the game opened
+        hideSystemBars();
         com.flycast.emulator.shell.GbcastGameUi.attach(this, mLayout, mView);
         DreamcastControls.INSTANCE.initialize(this);
         inputManager = (InputManager) getSystemService(Context.INPUT_SERVICE);

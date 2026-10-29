@@ -2,19 +2,17 @@ package com.flycast.emulator.shell.ui
 
 import android.content.Context
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.flycast.emulator.emu.JNIdc
 import gb.frame.PerfOptions
 import gb.frame.PerfOverlay
 import gb.frame.RaNotifications
+import gb.frame.GameplayOverlayChrome
+import gb.frame.gameOverlayInsets
 import kotlinx.coroutines.delay
 
 object GBCastOverlayOptions : gb.frame.MonitoringSettings {
@@ -66,31 +64,24 @@ fun GBCastGameplayOverlays(menuOpen: Boolean, onMenu: () -> Unit) {
     }
     Box(Modifier.fillMaxSize()) {
         if (!menuOpen) {
-            Row(modifier = Modifier.align(Alignment.TopStart).safeDrawingPadding().padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilledTonalIconButton(onClick = onMenu) {
-                Icon(Icons.Default.Menu, "Menu")
-            }
-            if (GBCastOverlayOptions.showFfButton) FilledTonalIconButton(
-                onClick = { DreamcastControls.setFastForward(!DreamcastControls.fastForwardActive) },
-                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                    containerColor = if (DreamcastControls.fastForwardActive) Color(0xFFE8C26A) else Color.Black.copy(alpha = .45f),
-                    contentColor = if (DreamcastControls.fastForwardActive) Color.Black else Color.White),
-            ) { Icon(Icons.Default.FastForward, "Fast-forward") }
-            }
-            PerfOverlay(GBCastOverlayOptions.options, "GBCast", fps, stats.getOrElse(3) { 60 }.toFloat().coerceAtLeast(1f),
-                when (stats.getOrElse(4) { 0 }) { 4 -> "Vulkan"; 5 -> "Vulkan OIT"; 3 -> "OpenGL OIT"; else -> "OpenGL ES" },
-                stats.getOrElse(1) { 640 }, stats.getOrElse(2) { 480 }, if (fps > 0f) 1000f / fps else 0f,
-                gpuName = { JNIdc.overlayGpuName().orEmpty() },
-                modifier = Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(10.dp))
+            // The kit's in-game chrome, placed the same way in every app (gb.frame.GameplayOverlayChrome)
+            GameplayOverlayChrome(
+                onMenu = onMenu,
+                showFastForwardButton = GBCastOverlayOptions.showFfButton, fastForward = DreamcastControls.fastForwardActive,
+                onFastForward = { DreamcastControls.setFastForward(!DreamcastControls.fastForwardActive) },
+                message = notice,
+                perf = { m ->
+                    PerfOverlay(GBCastOverlayOptions.options, "GBCast", fps, stats.getOrElse(3) { 60 }.toFloat().coerceAtLeast(1f),
+                        when (stats.getOrElse(4) { 0 }) { 4 -> "Vulkan"; 5 -> "Vulkan OIT"; 3 -> "OpenGL OIT"; else -> "OpenGL ES" },
+                        stats.getOrElse(1) { 640 }, stats.getOrElse(2) { 480 }, if (fps > 0f) 1000f / fps else 0f,
+                        gpuName = { JNIdc.overlayGpuName().orEmpty() }, modifier = m)
+                },
+            )
             if (stats.getOrElse(5) { 0 } != 0) Text("Fast-forward", color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.align(Alignment.BottomEnd).safeDrawingPadding().padding(12.dp))
-        }
-        RaNotifications(Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 56.dp))
-        notice?.let { message ->
-            Surface(color = Color.Black.copy(alpha = .8f), shape = MaterialTheme.shapes.medium,
-                modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 12.dp)) {
-                Text(message, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(12.dp))
-            }
+                modifier = Modifier.align(Alignment.BottomEnd).gameOverlayInsets().padding(12.dp))
+        } else {
+            // The quick menu covers the chrome; achievement notifications still show over it
+            RaNotifications(Modifier.align(Alignment.TopCenter).gameOverlayInsets().padding(top = 56.dp))
         }
     }
 }

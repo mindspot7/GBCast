@@ -45,11 +45,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
@@ -67,7 +63,8 @@ import gb.frame.HomeHelpBar
 import gb.frame.Covers
 import gb.frame.rememberAppIconPainter
 import gb.frame.CoverImageOptions
-import gb.frame.ConfirmDialog
+import gb.frame.HomeQuitDialog
+import gb.frame.homeQuitKeys
 import gb.frame.HomeActions
 import gb.frame.HomeGame
 import gb.frame.HomeLibrary
@@ -134,7 +131,6 @@ fun LibraryScreen(
         }
     }
     var confirmQuit by MenuState.quitOpen
-    MenuState.onQuit = onQuit
 
     // The last scan's list at once (no "no games" flash, no spinner when coming back from a game); scanned again below
     var games by remember {
@@ -250,19 +246,8 @@ fun LibraryScreen(
 
     Box(
         Modifier.fillMaxSize().background(palette.backgroundBrush).onFocusChanged { MenuState.hasFocus = it.hasFocus }.onPreviewKeyEvent { e ->
-            if (openingGame) return@onPreviewKeyEvent true
-            if (!confirmQuit) return@onPreviewKeyEvent false
-            val up = e.type == KeyEventType.KeyUp
-            when (e.key) {
-                Key.ButtonA, Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> if (up) {
-                    confirmQuit = false
-                    onQuit()
-                }
-                Key.ButtonB, Key.Back, Key.Escape -> if (up) confirmQuit = false
-                else -> {}
-            }
-            true
-        },
+            openingGame
+        }.homeQuitKeys(onQuit),
     ) {
         Column(
             Modifier.fillMaxSize().then(if (fullscreen) Modifier.padding(horizontal = 10.dp, vertical = 8.dp) else Modifier.safeDrawingPadding().padding(12.dp)),
@@ -289,7 +274,7 @@ fun LibraryScreen(
                     empty,
                     refocus = MenuState.refocus.intValue,
                     fullscreen = fullscreen,
-                    focusEnabled = !menuOpen && gameMenu == null && !confirmQuit,
+                    focusEnabled = !menuOpen && gameMenu == null,
                 )
             }
             if (!fullscreen && hasPad && HomeTheme.buttonHelp.value) HomeHelpBar()
@@ -344,15 +329,7 @@ fun LibraryScreen(
                 onCoverApplied = { coverVersion++; gameMenu = null },
             )
         }
-        if (confirmQuit) {
-            ConfirmDialog(
-                title = "Exit",
-                message = "Are you sure you want to exit?",
-                confirm = "Exit",
-                onConfirm = { confirmQuit = false; onQuit() },
-                onCancel = { confirmQuit = false },
-            )
-        }
+        HomeQuitDialog(onQuit)
     }
 }
 

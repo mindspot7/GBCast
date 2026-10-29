@@ -319,7 +319,7 @@ private fun VideoPage(tick: Int, cfg: Cfg) {
             cfg.setInt("config", "rend.ScreenStretching", 100)
         }
         SettingsDivider()
-        ToggleRow(Icons.Default.Tune, "Widescreen game hacks", "rend.WidescreenGameHacks", cfg.bool("config", "rend.WidescreenGameHacks")) { cfg.toggle("config", "rend.WidescreenGameHacks") }
+        gb.frame.WidescreenGameHacksRow(cfg.bool("config", "rend.WidescreenGameHacks")) { cfg.toggle("config", "rend.WidescreenGameHacks") }
         SettingsDivider()
         ToggleRow(Icons.Default.Tv, "VSync", "rend.vsync", cfg.bool("config", "rend.vsync")) { cfg.toggle("config", "rend.vsync") }
         SettingsDivider()

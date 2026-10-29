@@ -275,8 +275,11 @@ object GbcastGameUi {
                     setInt("config", "rend.ScreenStretching", 100)
                 }
 
+                gb.frame.WidescreenGameHacksItem(value = currentBool("config", "rend.WidescreenGameHacks")) {
+                    setBool("config", "rend.WidescreenGameHacks", it)
+                }
+
                 for ((key, label) in listOf(
-                    "rend.WidescreenGameHacks" to "Widescreen game hacks",
                     "rend.vsync" to "VSync",
                     "rend.IntegerScale" to "Integer scale",
                 )) {

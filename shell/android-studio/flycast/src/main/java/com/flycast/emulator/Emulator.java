@@ -92,6 +92,7 @@ public class Emulator extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        gb.frame.LauncherIconCompatibility.applyFromMetadata(this);
         Emulator.context = getApplicationContext();
     }
 

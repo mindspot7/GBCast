@@ -111,42 +111,42 @@ void gui_settings_video()
 			ImGui::NextColumn();
 #endif
 			ImGui::Columns(1, nullptr, false);
-    	}
+	}
     }
     header(T("Transparent Sorting"));
     {
 		const bool has_per_pixel = GraphicsContext::Instance()->hasPerPixel();
-    	int renderer = perPixel ? 2 : config::PerStripSorting ? 1 : 0;
-    	ImGui::Columns(has_per_pixel ? 3 : 2, "renderers", false);
-    	ImGui::RadioButton(T("Per Triangle"), &renderer, 0);
+	int renderer = perPixel ? 2 : config::PerStripSorting ? 1 : 0;
+	ImGui::Columns(has_per_pixel ? 3 : 2, "renderers", false);
+	ImGui::RadioButton(T("Per Triangle"), &renderer, 0);
         ImGui::SameLine();
         ShowHelpMarker(T("Sorts each transparent polygon separately. This is usually the safest choice for correct overlap."));
-    	ImGui::NextColumn();
-    	ImGui::RadioButton(T("Per Strip"), &renderer, 1);
+	ImGui::NextColumn();
+	ImGui::RadioButton(T("Per Strip"), &renderer, 1);
         ImGui::SameLine();
         ShowHelpMarker(T("Groups transparent polygons into strips before sorting. It can be faster, but some games may show incorrect overlap."));
         if (has_per_pixel)
         {
-        	ImGui::NextColumn();
-        	ImGui::RadioButton(T("Per Pixel"), &renderer, 2);
-        	ImGui::SameLine();
+	ImGui::NextColumn();
+	ImGui::RadioButton(T("Per Pixel"), &renderer, 2);
+	ImGui::SameLine();
         ShowHelpMarker(T("Checks transparent order for each pixel for the most accurate result. This is the slowest option."));
         }
-    	ImGui::Columns(1, nullptr, false);
-    	switch (renderer)
-    	{
-    	case 0:
-    		perPixel = false;
-    		config::PerStripSorting.set(false);
-    		break;
-    	case 1:
-    		perPixel = false;
-    		config::PerStripSorting.set(true);
-    		break;
-    	case 2:
-    		perPixel = true;
-    		break;
-    	}
+	ImGui::Columns(1, nullptr, false);
+	switch (renderer)
+	{
+	case 0:
+		perPixel = false;
+		config::PerStripSorting.set(false);
+		break;
+	case 1:
+		perPixel = false;
+		config::PerStripSorting.set(true);
+		break;
+	case 2:
+		perPixel = true;
+		break;
+	}
     }
 	ImGui::Spacing();
 
@@ -159,24 +159,24 @@ void gui_settings_video()
         u32 selected = 0;
         for (u32 i = 0; i < scalings.size(); i++)
         {
-        	vres[i] = scalings[i] * 480;
-        	if (vres[i] == config::RenderResolution)
-        		selected = i;
-        	if (!config::Widescreen)
-        		resLabels[i] = std::to_string((int)(scalings[i] * 640)) + "x" + std::to_string((int)(scalings[i] * 480));
-        	else
-        		resLabels[i] = std::to_string((int)(scalings[i] * 480 * 16 / 9)) + "x" + std::to_string((int)(scalings[i] * 480));
-        	resLabels[i] += " (" + scalingsText[i] + ")";
+	vres[i] = scalings[i] * 480;
+	if (vres[i] == config::RenderResolution)
+		selected = i;
+	if (!config::Widescreen)
+		resLabels[i] = std::to_string((int)(scalings[i] * 640)) + "x" + std::to_string((int)(scalings[i] * 480));
+	else
+		resLabels[i] = std::to_string((int)(scalings[i] * 480 * 16 / 9)) + "x" + std::to_string((int)(scalings[i] * 480));
+	resLabels[i] += " (" + scalingsText[i] + ")";
         }
 
         ImGui::PushItemWidth(ImGui::CalcItemWidth() - innerSpacing * 2.0f - ImGui::GetFrameHeight() * 2.0f);
         if (ImGui::BeginCombo("##Resolution", resLabels[selected].c_str(), ImGuiComboFlags_NoArrowButton))
         {
-        	for (u32 i = 0; i < scalings.size(); i++)
+	for (u32 i = 0; i < scalings.size(); i++)
             {
                 bool is_selected = vres[i] == config::RenderResolution;
                 if (ImGui::Selectable(resLabels[i].c_str(), is_selected))
-                	config::RenderResolution = vres[i];
+	config::RenderResolution = vres[i];
                 if (is_selected)
                     ImGui::SetItemDefaultFocus();
             }
@@ -188,50 +188,50 @@ void gui_settings_video()
         if (ImGui::ArrowButton("##Decrease Res", ImGuiDir_Left))
         {
             if (selected > 0)
-            	config::RenderResolution = vres[selected - 1];
+	config::RenderResolution = vres[selected - 1];
         }
         ImGui::SameLine(0, innerSpacing);
         if (ImGui::ArrowButton("##Increase Res", ImGuiDir_Right))
         {
             if (selected < vres.size() - 1)
-            	config::RenderResolution = vres[selected + 1];
+	config::RenderResolution = vres[selected + 1];
         }
         ImGui::SameLine(0, innerSpacing);
 
         ImGui::Text("%s", T("Enhanced resolution"));
         ImGui::SameLine();
-        ShowHelpMarker(T("Internal render resolution. Higher is better, but more demanding on the GPU. Values higher than your display resolution (but no more than double your display resolution) can be used for supersampling, which provides high-quality antialiasing without reducing sharpness."));
+        ShowHelpMarker(T("Renders the game above its original resolution for sharper edges. Higher values use more GPU power; Native is the lightest setting."));
 		#ifndef __ANDROID__
 		OptionCheckbox(T("Integer scaling"), config::IntegerScale, T("Uses whole-number scale steps to keep pixels evenly sized. The picture may have larger borders."));
 		#endif
 		OptionCheckbox(T("Bilinear filtering"), config::LinearInterpolation, T("Smooths pixels when the image is resized. It looks softer than Nearest and has little performance cost."));
 #ifndef TARGET_IPHONE
 		OptionCheckbox(T("VSync"), config::VSync, T("Matches frame display to the screen refresh to reduce tearing. It can add a little input delay or limit speed."));
-    	ImGui::Indent();
+	ImGui::Indent();
 		{
 			DisabledScope scope(!config::VSync);
 #ifdef __ANDROID__
-			OptionCheckbox(T("Frame Pacing (Experimental)"), config::FramePacing,
+			OptionCheckbox(T("Frame pacing"), config::FramePacing,
 					T("Smooths uneven frame delivery by matching the console's original timing. It may add a small amount of waiting."));
 #else
-	    	if (isVulkan(config::RendererType))
-	    		OptionCheckbox(T("Duplicate frames"), config::DupeFrames, T("Duplicate frames on high refresh rate monitors (120 Hz and higher)"));
+		if (isVulkan(config::RendererType))
+			OptionCheckbox(T("Duplicate frames"), config::DupeFrames, T("Duplicate frames on high refresh rate monitors (120 Hz and higher)"));
 #endif
-    	}
-    	ImGui::Unindent();
+	}
+	ImGui::Unindent();
 #endif
-    	OptionCheckbox(T("Show VMU In-game"), config::FloatVMUs, T("Show the VMU LCD screens while in-game"));
+		OptionCheckbox(T("Show VMU in game"), config::FloatVMUs, T("Shows the memory card screen over the game. It has a small rendering cost."));
 		OptionCheckbox(T("Framebuffer emulation"), config::EmulateFramebuffer,
 				T("More accurately handles games that read the image back while drawing. It can be demanding and may conflict with upscaling or widescreen."));
 		{
 			DisabledScope scope(game_started);
-			OptionCheckbox(T("Load Custom Textures"), config::CustomTextures,
-					T("Load custom/high-res textures from data/textures/<game id>"));
+			OptionCheckbox(T("Load custom textures"), config::CustomTextures,
+					T("Replaces game images with files from an imported texture pack. It uses extra storage and memory; restart the game after changing packs."));
 			ImGui::Indent();
 			{
 				DisabledScope scope(!config::CustomTextures.get());
-				OptionCheckbox(T("Preload Custom Textures"), config::PreloadCustomTextures,
-						T("Preload custom textures at game start. May improve performance but increases memory usage"));
+				OptionCheckbox(T("Preload custom textures"), config::PreloadCustomTextures,
+						T("Loads the pack before gameplay to avoid pauses when textures first appear. It uses more memory and can increase startup time."));
 			}
 			ImGui::Unindent();
 		}
@@ -239,20 +239,20 @@ void gui_settings_video()
 	ImGui::Spacing();
     header(T("Aspect Ratio"));
     {
-    	OptionCheckbox(T("Widescreen"), config::Widescreen,
-    			T("Draw geometry outside of the normal 4:3 aspect ratio. May produce graphical glitches in the revealed areas.\nAspect Fit and shows the full 16:9 content."));
+		OptionCheckbox(T("Widescreen"), config::Widescreen,
+				T("Expands the game's view from 4:3 to widescreen so more of the scene is visible. Some games may show glitches at the edges."));
 		{
 			DisabledScope scope(!config::Widescreen || config::IntegerScale);
 
 			ImGui::Indent();
-			OptionCheckbox(T("Super Widescreen"), config::SuperWidescreen,
-					T("Use the full width of the screen or window when its aspect ratio is greater than 16:9.\nAspect Fill and remove black bars. Not compatible with integer scaling."));
+			OptionCheckbox(T("Super widescreen"), config::SuperWidescreen,
+					T("Fills displays wider than 16:9 by cropping the sides. This can remove black bars but may hide game content."));
 			ImGui::Unindent();
-    	}
+	}
 		OptionCheckbox(T("Widescreen game hacks"), config::WidescreenGameHacks,
 				T("Uses built-in widescreen codes in supported games. It can show more of the scene, but may cause visual glitches."));
-    	OptionSlider(T("Horizontal Stretching"), config::ScreenStretching, 100, 250,
-    			T("Stretch the screen horizontally"), "%d%%");
+		OptionSlider(T("Horizontal image stretch"), config::ScreenStretching, 100, 250,
+				T("Stretches the picture sideways. Higher values distort shapes and do not improve emulation speed."), "%d%%");
 		#ifndef __ANDROID__
 		OptionCheckbox(T("Rotate Screen 90°"), config::Rotate90, T("Rotate the screen 90° counterclockwise"));
 		#endif
@@ -303,57 +303,57 @@ void gui_settings_video()
 
         ImGui::Text("%s", T("Pixel Buffer Size"));
         ImGui::SameLine();
-        ShowHelpMarker(T("The size of the pixel buffer. May need to be increased when upscaling by a large factor."));
+        ShowHelpMarker(T("Memory reserved for per-pixel transparency sorting. Increase it only if a complex scene is cut off; larger buffers use more memory."));
 
-        OptionSlider(T("Maximum Layers"), config::PerPixelLayers, 8, 128,
-        		T("Maximum number of transparent layers. May need to be increased for some complex scenes. Decreasing it may improve performance."));
+        OptionSlider(T("Maximum transparent layers"), config::PerPixelLayers, 8, 128,
+				T("Sets how many overlapping transparent effects can be drawn. Raise it if effects disappear; lower values may be faster."));
 	}
 	ImGui::Spacing();
     header(T("Performance"));
     {
-    	ImGui::Text("%s", T("Automatic Frame Skipping:"));
-    	ImGui::Columns(3, "autoskip", false);
-    	OptionRadioButton(T("Disabled"), config::AutoSkipFrame, 0, T("No frame skipping"));
-    	ImGui::NextColumn();
-    	OptionRadioButton(T("Normal"), config::AutoSkipFrame, 1, T("Skip a frame when the GPU and CPU are both running slow"));
-    	ImGui::NextColumn();
-    	OptionRadioButton(T("Maximum"), config::AutoSkipFrame, 2, T("Skip a frame when the GPU is running slow"));
-    	ImGui::Columns(1, nullptr, false);
+	ImGui::Text("%s", T("Auto frame skip:"));
+	ImGui::Columns(3, "autoskip", false);
+		OptionRadioButton(T("Off"), config::AutoSkipFrame, 0, T("Always draw every frame. This looks smooth but does not reduce graphics work."));
+	ImGui::NextColumn();
+	OptionRadioButton(T("Normal"), config::AutoSkipFrame, 1, T("Skips drawing when both graphics and emulation are behind. Motion may look less smooth; audio timing stays normal."));
+	ImGui::NextColumn();
+	OptionRadioButton(T("Max"), config::AutoSkipFrame, 2, T("Also skips drawing when the GPU is slow even if the emulated CPU is keeping up. Motion may look less smooth; audio timing stays normal."));
+	ImGui::Columns(1, nullptr, false);
 
-    	OptionArrowButtons(T("Frame Skipping"), config::SkipFrame, 0, 6,
-    			T("Number of frames to skip between two actually rendered frames"));
-    	OptionCheckbox(T("Shadows"), config::ModifierVolumes,
-    			T("Enable modifier volumes, usually used for shadows"));
-    	OptionCheckbox(T("Fog"), config::Fog, T("Enable fog effects"));
+	OptionArrowButtons(T("Fixed frame skip"), config::SkipFrame, 0, 6,
+			T("Forces a set number of frames to be skipped. This can help when graphics are the bottleneck, but makes motion less smooth and cannot speed up a CPU-limited game."));
+	OptionCheckbox(T("Shadows"), config::ModifierVolumes,
+			T("Draws special shadow effects used by some games. Disabling it may remove shadows and can slightly reduce graphics work."));
+	OptionCheckbox(T("Fog effects"), config::Fog, T("Keeps distance haze and fog used by some games. Turning it off changes the picture and may save a little GPU time."));
     }
     ImGui::Spacing();
 	header(T("Advanced"));
     {
-    	OptionCheckbox(T("Delay Frame Swapping"), config::DelayFrameSwapping,
-    			T("Useful to avoid flashing screen or glitchy videos. Not recommended on slow platforms"));
-    	OptionCheckbox(T("Fix Upscale Bleeding Edge"), config::FixUpscaleBleedingEdge,
-    			T("Helps with texture bleeding case when upscaling. Disabling it can help if pixels are warping when upscaling in 2D games (MVC2, CVS, KOF, etc.)"));
-    	OptionCheckbox(T("Native Depth Interpolation"), config::NativeDepthInterpolation,
-    			T("Helps with texture corruption and depth issues on AMD GPUs. Can also help Intel GPUs in some cases."));
-    	OptionCheckbox(T("Copy Rendered Textures to VRAM"), config::RenderToTextureBuffer,
-    			T("Copy rendered-to textures back to VRAM. Slower but accurate"));
+	OptionCheckbox(T("Delay frame swap"), config::DelayFrameSwapping,
+			T("Waits before showing a frame to fix flicker or broken video in some games. It can reduce speed on weaker devices."));
+	OptionCheckbox(T("Fix texture edges when upscaling"), config::FixUpscaleBleedingEdge,
+			T("Prevents neighboring texture pixels from leaking into enlarged images. If 2D pixels warp, turn this off for that game."));
+	OptionCheckbox(T("Accurate depth interpolation"), config::NativeDepthInterpolation,
+			T("Uses a more accurate depth calculation to fix visual corruption on some graphics cards. It may cost performance; leave it off unless needed."));
+	OptionCheckbox(T("Copy rendered textures to memory"), config::RenderToTextureBuffer,
+			T("Copies graphics back into console memory for games that reuse the image as a texture. More accurate, but slower."));
 		const std::array<int, 5> aniso{ 1, 2, 4, 8, 16 };
         const std::array<std::string, 5> anisoText{ T("Disabled"), "2x", "4x", "8x", "16x" };
         u32 afSelected = 0;
         for (u32 i = 0; i < aniso.size(); i++)
         {
-        	if (aniso[i] == config::AnisotropicFiltering)
-        		afSelected = i;
+	if (aniso[i] == config::AnisotropicFiltering)
+		afSelected = i;
         }
 
         ImGui::PushItemWidth(ImGui::CalcItemWidth() - innerSpacing * 2.0f - ImGui::GetFrameHeight() * 2.0f);
         if (ImGui::BeginCombo("##Anisotropic Filtering", anisoText[afSelected].c_str(), ImGuiComboFlags_NoArrowButton))
         {
-        	for (u32 i = 0; i < aniso.size(); i++)
+	for (u32 i = 0; i < aniso.size(); i++)
             {
                 bool is_selected = aniso[i] == config::AnisotropicFiltering;
                 if (ImGui::Selectable(anisoText[i].c_str(), is_selected))
-                	config::AnisotropicFiltering = aniso[i];
+	config::AnisotropicFiltering = aniso[i];
                 if (is_selected)
                     ImGui::SetItemDefaultFocus();
             }
@@ -365,30 +365,30 @@ void gui_settings_video()
         if (ImGui::ArrowButton("##Decrease Anisotropic Filtering", ImGuiDir_Left))
         {
             if (afSelected > 0)
-            	config::AnisotropicFiltering = aniso[afSelected - 1];
+	config::AnisotropicFiltering = aniso[afSelected - 1];
         }
         ImGui::SameLine(0, innerSpacing);
         if (ImGui::ArrowButton("##Increase Anisotropic Filtering", ImGuiDir_Right))
         {
             if (afSelected < aniso.size() - 1)
-            	config::AnisotropicFiltering = aniso[afSelected + 1];
+	config::AnisotropicFiltering = aniso[afSelected + 1];
         }
         ImGui::SameLine(0, innerSpacing);
 
         ImGui::Text("%s", T("Anisotropic Filtering"));
         ImGui::SameLine();
-        ShowHelpMarker(T("Higher values make textures viewed at oblique angles look sharper, but are more demanding on the GPU. This option only has a visible impact on mipmapped textures."));
+        ShowHelpMarker(T("Higher values keep textures sharper when viewed at an angle. They use more GPU time and are visible only in games that use mipmaps."));
 
-    	ImGui::Text("%s", T("Texture Filtering:"));
-    	ImGui::Columns(3, "textureFiltering", false);
-    	OptionRadioButton(T("Default"), config::TextureFiltering, 0, T("Use the game's default texture filtering"));
-    	ImGui::NextColumn();
-    	OptionRadioButton(T("Force Nearest-Neighbor"), config::TextureFiltering, 1, T("Force nearest-neighbor filtering for all textures. Crisper appearance, but may cause various rendering issues. This option usually does not affect performance."));
-    	ImGui::NextColumn();
-    	OptionRadioButton(T("Force Linear"), config::TextureFiltering, 2, T("Force linear filtering for all textures. Smoother appearance, but may cause various rendering issues. This option usually does not affect performance."));
-    	ImGui::Columns(1, nullptr, false);
+	ImGui::Text("%s", T("Texture Filtering:"));
+	ImGui::Columns(3, "textureFiltering", false);
+	OptionRadioButton(T("Default"), config::TextureFiltering, 0, T("Use the game's default texture filtering"));
+	ImGui::NextColumn();
+	OptionRadioButton(T("Force Nearest"), config::TextureFiltering, 1, T("Keeps pixel edges sharp. Some games may show visual glitches; performance is usually unchanged."));
+	ImGui::NextColumn();
+	OptionRadioButton(T("Force Bilinear"), config::TextureFiltering, 2, T("Smooths game textures but makes pixels softer. Some games may show visual glitches; performance is usually unchanged."));
+	ImGui::Columns(1, nullptr, false);
 
-    	OptionCheckbox(T("Show FPS Counter"), config::ShowFPS, T("Show on-screen frame/sec counter"));
+		OptionCheckbox(T("Show FPS counter"), config::ShowFPS, T("Shows the current frames per second over the game. The overlay has a small rendering cost."));
     }
 #ifdef VIDEO_ROUTING
 	ImGui::Spacing();
@@ -426,16 +426,16 @@ void gui_settings_video()
     switch (renderApi)
     {
     case OpenGL:
-    	config::RendererType = perPixel ? RenderType::OpenGL_OIT : RenderType::OpenGL;
-    	break;
+	config::RendererType = perPixel ? RenderType::OpenGL_OIT : RenderType::OpenGL;
+	break;
     case Vulkan:
-    	config::RendererType = perPixel ? RenderType::Vulkan_OIT : RenderType::Vulkan;
-    	break;
+	config::RendererType = perPixel ? RenderType::Vulkan_OIT : RenderType::Vulkan;
+	break;
     case DirectX9:
-    	config::RendererType = RenderType::DirectX9;
-    	break;
+	config::RendererType = RenderType::DirectX9;
+	break;
     case DirectX11:
-    	config::RendererType = perPixel ? RenderType::DirectX11_OIT : RenderType::DirectX11;
-    	break;
+	config::RendererType = perPixel ? RenderType::DirectX11_OIT : RenderType::DirectX11;
+	break;
     }
 }

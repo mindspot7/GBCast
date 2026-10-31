@@ -1916,7 +1916,10 @@ VulkanContext::VulkanContext(void *window, void *display)
 	: GraphicsContext(window, display)
 {
 	#if defined(__ANDROID__)
-	gbFramePresenter = true;
+	// Keep Flycast's native Vulkan swapchain for the default output. The GBFrame GLES presenter is
+	// only needed when a non-default filter or a post-process shader is selected; always enabling
+	// the AHardwareBuffer bridge prevented Vulkan games from starting on the RG Rotate's Mali-G52.
+	gbFramePresenter = config::PresenterShader != 0 || config::PresenterFilter != 1;
 	#endif
 	if (!init())
 		throw FlycastException("Vulkan initialization failed");

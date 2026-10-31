@@ -38,14 +38,14 @@ sync control; Threaded rendering only moves PVR rendering to a separate thread.
 
 ## System settings
 
-The 32 MB RAM option is a console RAM modification from 16 MB to 32 MB. It can
-help homebrew or games that use the larger memory map, does not improve speed,
-and may affect compatibility. Naomi/arcade boards ignore it.
-
-Region chooses the Dreamcast console region used at boot and by BIOS/disc
-compatibility checks. Default follows the disc's supported region. Broadcast
-selects NTSC, PAL, PAL-M, or PAL-N for the Dreamcast system flash settings;
-Default leaves the existing flash value in place.
+Expanded RAM and console region are automatic system behavior, not user-facing
+settings. GBCast starts in its existing USA region and falls back to a region
+the disc supports when needed; title-specific core exceptions remain active.
+The 32 MB RAM mode is enabled only for confirmed product IDs in the internal
+compatibility list. That list currently has no entries: extra RAM does not
+improve speed and can break compatibility. Broadcast remains a separate video
+standard setting for the Dreamcast system flash; Default leaves the existing
+flash value in place.
 
 “Preload disc into RAM” is currently a GBSat/Ymir loader option, not a GBCast
 setting. Ymir's ISO reader loads the image into memory and the CHD reader asks

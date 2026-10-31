@@ -100,11 +100,6 @@ static void gui_settings_advanced()
         OptionCheckbox(T("Serial Console"), config::SerialConsole,
         		T("Dump the Dreamcast serial console to stdout"));
 #endif
-		{
-			DisabledScope scope(game_started);
-			OptionCheckbox(T("Dreamcast 32MB RAM Mod"), config::RamMod32MB,
-					T("Enables 32MB RAM Mod for Dreamcast. May affect compatibility"));
-		}
         OptionCheckbox(T("Dump Textures"), config::DumpTextures,
         		T("Dump all textures into data/texdump/<game id>"));
 		ImGui::Indent();

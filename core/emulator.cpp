@@ -53,9 +53,37 @@
 #include "hw/sh4/sh4_interpreter.h"
 #include "hw/sh4/dyna/ngen.h"
 #include "oslib/i18n.h"
+#include <algorithm>
+#include <array>
+#include <string_view>
 
 settings_t settings;
 constexpr char const *BIOS_TITLE = "Dreamcast BIOS";
+
+static void applyAutomaticRegion()
+{
+	if (!settings.platform.isConsole())
+		return;
+
+	// USA is the existing console default. Ignore legacy user/per-game region choices,
+	// then fall back only when this disc does not support the default region.
+	config::Region.override(1);
+	const std::string areas(ip_meta.area_symbols, sizeof(ip_meta.area_symbols));
+	const bool region_usa = areas.find('U') != std::string::npos;
+	const bool region_eu = areas.find('E') != std::string::npos;
+	const bool region_japan = areas.find('J') != std::string::npos;
+	if (region_usa || region_eu || region_japan)
+	{
+		if (!region_usa)
+			config::Region.override(region_eu ? 2 : 0);
+	}
+	else
+		WARN_LOG(BOOT, "No region specified in IP.BIN; keeping default USA region");
+
+	// Virtual-On Oratorio Tangram needs the Japanese console region.
+	if (settings.content.gameId == "VIRTUAL-ON ORATORIO TANGRAM")
+		config::Region.override(0);
+}
 
 static void loadSpecialSettings()
 {
@@ -200,47 +228,7 @@ static void loadSpecialSettings()
 			config::ExtraDepthScale.override(10000.f);
 		}
 
-		std::string areas(ip_meta.area_symbols, sizeof(ip_meta.area_symbols));
-		bool region_usa = areas.find('U') != std::string::npos;
-		bool region_eu = areas.find('E') != std::string::npos;
-		bool region_japan = areas.find('J') != std::string::npos;
-		if (region_usa || region_eu || region_japan)
-		{
-			switch (config::Region)
-			{
-			case 0: // Japan
-				if (!region_japan)
-				{
-					NOTICE_LOG(BOOT, "Japan region not supported. Using %s instead", region_usa ? "USA" : "Europe");
-					config::Region.override(region_usa ? 1 : 2);
-				}
-				break;
-			case 1: // USA
-				if (!region_usa)
-				{
-					NOTICE_LOG(BOOT, "USA region not supported. Using %s instead", region_eu ? "Europe" : "Japan");
-					config::Region.override(region_eu ? 2 : 0);
-				}
-				break;
-			case 2: // Europe
-				if (!region_eu)
-				{
-					NOTICE_LOG(BOOT, "Europe region not supported. Using %s instead", region_usa ? "USA" : "Japan");
-					config::Region.override(region_usa ? 1 : 0);
-				}
-				break;
-			case 3: // Default
-				if (region_usa)
-					config::Region.override(1);
-				else if (region_eu)
-					config::Region.override(2);
-				else
-					config::Region.override(0);
-				break;
-			}
-		}
-		else
-			WARN_LOG(BOOT, "No region specified in IP.BIN");
+		applyAutomaticRegion();
 		if (config::Cable <= 1 && (!ip_meta.supportsVGA()
 				|| prod_id == "T-12504N"	// Caesar's Palace (NTSC)
 				|| prod_id == "12502D-50"))	// Caesar's Palace (PAL)
@@ -426,10 +414,6 @@ static void loadSpecialSettings()
 			INFO_LOG(BOOT, "Disabling Free Play for game %s", prod_id.c_str());
 			config::ForceFreePlay.override(false);
 		}
-		if (prod_id == "VIRTUAL-ON ORATORIO TANGRAM") {
-			INFO_LOG(BOOT, "Forcing Japan region for game %s", prod_id.c_str());
-			config::Region.override(0);
-		}
 		if (prod_id == "CAPCOM VS SNK PRO  JAPAN")
 		{
 			INFO_LOG(BOOT, "Enabling Extra depth scaling for game %s", prod_id.c_str());
@@ -510,6 +494,30 @@ static void setPlatform(int platform)
 	addrspace::initMappings();
 }
 
+static bool applyAutomaticDreamcastRamProfile()
+{
+	// Fill this list only with product IDs confirmed to use the expanded memory map.
+	// No retail or homebrew IDs are preloaded because the extra RAM can break compatibility.
+	static constexpr std::array<std::string_view, 0> k32MBRamGameIds{};
+	const std::string_view gameId(settings.content.gameId);
+	const bool enable32MB = std::find(k32MBRamGameIds.begin(), k32MBRamGameIds.end(), gameId) != k32MBRamGameIds.end();
+	const bool currently32MB = settings.platform.isConsole() && settings.platform.ram_size == 32_MB;
+	config::RamMod32MB.override(enable32MB);
+	if (settings.platform.isConsole() && currently32MB != enable32MB)
+	{
+		// Product ID is available only after the disc is mounted. Rebuild the RAM map
+		// before the emulated CPU starts, then reset machine state against that map.
+		setPlatform(DC_PLATFORM_DREAMCAST);
+		mem_map_default();
+		NOTICE_LOG(BOOT, "Automatic Dreamcast RAM profile for %s: %s", gameId.empty() ? "(unknown)" : gameId.data(),
+				enable32MB ? "32 MB" : "16 MB");
+		return true;
+	}
+	NOTICE_LOG(BOOT, "Automatic Dreamcast RAM profile for %s: %s", gameId.empty() ? "(unknown)" : gameId.data(),
+			enable32MB ? "32 MB" : "16 MB");
+	return false;
+}
+
 void Emulator::init()
 {
 	if (state != Uninitialized)
@@ -575,6 +583,9 @@ void Emulator::loadGame(const char *path, LoadProgress *progress)
 {
 	init();
 	try {
+		// The old user-facing 32 MB toggle is intentionally ignored. It is enabled only
+		// for Dreamcast product IDs validated and added to the internal compatibility list.
+		config::RamMod32MB.override(false);
 		DEBUG_LOG(BOOT, "Loading game %s", path == nullptr ? "(nil)" : path);
 
 		if (path != nullptr && strlen(path) > 0)
@@ -623,6 +634,8 @@ void Emulator::loadGame(const char *path, LoadProgress *progress)
 					if (gdr::initDrive(settings.content.path))
 					{
 						loadGameSpecificSettings();
+						if (applyAutomaticDreamcastRamProfile())
+							dc_reset(true);
 						if (config::UseReios || !nvmem::loadFiles())
 						{
 							nvmem::loadHle();
@@ -683,6 +696,8 @@ void Emulator::loadGame(const char *path, LoadProgress *progress)
 		}
 		// reload settings so that all settings can be overridden
 		loadGameSpecificSettings();
+		if (applyAutomaticDreamcastRamProfile())
+			dc_reset(true);
 		NetworkHandshake::init();
 		settings.input.fastForwardMode = false;
 		EventManager::event(Event::Start);
@@ -888,6 +903,8 @@ void loadGameSpecificSettings()
 
 	// Reload per-game settings
 	config::Settings::instance().load(true);
+	// Region is automatic only: do this after loading old global/per-game configs too.
+	applyAutomaticRegion();
 
 	if (config::GGPOEnable || settings.raHardcoreMode)
 		config::Sh4Clock.override(200);

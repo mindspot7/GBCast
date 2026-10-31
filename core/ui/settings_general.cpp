@@ -237,12 +237,6 @@ void gui_settings_general()
 				T("TV broadcasting standard for non-VGA modes"));
 	}
 
-	const char *consoleRegion[] = { T("Japan"), T("USA"), T("Europe"), T("Default") };
-	const char *arcadeRegion[] = { T("Japan"), T("USA"), i18n::translateCtx("region", "Export"), T("Korea") };
-	const char **region = settings.platform.isArcade() ? arcadeRegion : consoleRegion;
-	OptionComboBox(T("Region"), config::Region, region, std::size(consoleRegion),
-			T("BIOS region"));
-
 	const char *cable[] = { T("VGA"), T("RGB Component"), T("TV Composite") };
 	{
 		DisabledScope scope(config::Cable.isReadOnly() || settings.platform.isArcade());

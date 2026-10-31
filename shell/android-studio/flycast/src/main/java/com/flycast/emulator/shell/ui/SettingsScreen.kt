@@ -274,25 +274,12 @@ private fun SystemPage(tick: Int, cfg: Cfg, onFolder: () -> Unit, onBios: () -> 
             )
         },
         extraSettings = {
-            val region = indexOf(tick, intArrayOf(0, 1, 2, 3), cfg.int("config", "Dreamcast.Region"))
-            val broadcast = indexOf(tick, intArrayOf(0, 1, 2, 3, 4), cfg.int("config", "Dreamcast.Broadcast"))
-            SettingsGroup("Dreamcast", Icons.Default.Tune) {
-                gb.frame.DreamcastRegionSettingsRow(region) {
-                    cfg.setInt("config", "Dreamcast.Region", intArrayOf(0, 1, 2, 3)[it])
-                }
-                SettingsDivider()
-                gb.frame.DreamcastCableSettingsRow(cfg.int("config", "Dreamcast.Cable")) {
-                    cfg.setInt("config", "Dreamcast.Cable", it)
-                }
-                SettingsDivider()
-                gb.frame.DreamcastBroadcastSettingsRow(broadcast) {
-                    cfg.setInt("config", "Dreamcast.Broadcast", it)
-                }
-                SettingsDivider()
-                gb.frame.DreamcastRamModSettingsRow(cfg.bool("config", "Dreamcast.RamMod32MB")) {
-                    cfg.setBool("config", "Dreamcast.RamMod32MB", it)
-                }
-            }
+            gb.frame.DreamcastSystemSettings(
+                cable = cfg.int("config", "Dreamcast.Cable"),
+                onCableChange = { cfg.setInt("config", "Dreamcast.Cable", it) },
+                broadcast = cfg.int("config", "Dreamcast.Broadcast"),
+                onBroadcastChange = { cfg.setInt("config", "Dreamcast.Broadcast", it) },
+            )
         },
     )
 }

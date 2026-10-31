@@ -377,7 +377,7 @@ private fun PerformancePage(tick: Int, cfg: Cfg) {
     SettingsGroup("Performance", Icons.Default.Speed) {
         InfoRow("Recommended preset", GBCastBridge.deviceRecommendation())
         SettingsDivider()
-        ToggleRow(Icons.Default.Speed, "CPU recompiler", "On by default: faster on weak devices and less CPU use on the others, slightly less accurate. Turn off if a game misbehaves", cfg.bool("config", "Dynarec.Enabled")) { cfg.toggle("config", "Dynarec.Enabled") }
+        ToggleRow(Icons.Default.Speed, "CPU recompiler (Dynarec)","On by default: faster on weak devices and less CPU use on the others, slightly less accurate. Turn off if a game misbehaves", cfg.bool("config", "Dynarec.Enabled")) { cfg.toggle("config", "Dynarec.Enabled") }
         SettingsDivider()
         ToggleRow(Icons.Default.Speed, "Threaded rendering", null, cfg.bool("config", "rend.ThreadedRendering")) { cfg.toggle("config", "rend.ThreadedRendering") }
         SettingsDivider()

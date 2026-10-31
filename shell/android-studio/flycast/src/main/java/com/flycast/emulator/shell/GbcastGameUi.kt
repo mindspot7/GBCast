@@ -366,7 +366,7 @@ object GbcastGameUi {
             gb.frame.QuickMenuPage("performance", "Performance") {
 
                 for ((key, label) in listOf(
-                    "Dynarec.Enabled" to "CPU recompiler",
+                    "Dynarec.Enabled" to "CPU recompiler (Dynarec)",
                     "rend.ThreadedRendering" to "Threaded rendering",
                     "rend.FramePacing" to "Frame pacing",
                     "FastGDRomLoad" to "Fast CD load",

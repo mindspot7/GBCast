@@ -22,9 +22,9 @@
 
 void gui_settings_audio()
 {
-	OptionCheckbox(T("Enable DSP"), config::DSPEnabled,
-			T("Enable the Dreamcast Digital Sound Processor. Only recommended on fast platforms"));
-    OptionCheckbox(T("Enable VMU Sounds"), config::VmuSound, T("Play VMU beeps when enabled."));
+	OptionCheckbox(T("DSP effects"), config::DSPEnabled,
+			T("Enables extra effects from the sound chip's digital signal processor. It uses more CPU time; turn it off if performance is low."));
+    OptionCheckbox(T("VMU sounds"), config::VmuSound, T("Plays the memory card's beeps. Performance cost is negligible."));
 
 	if (OptionSlider(T("Volume Level"), config::AudioVolume, 0, 100, T("Adjust the emulator's audio level"), "%d%%"))
 	{
@@ -32,8 +32,8 @@ void gui_settings_audio()
 	};
 #ifdef __ANDROID__
 	if (config::AudioBackend.get() == "auto" || config::AudioBackend.get() == "android")
-		OptionCheckbox(T("Automatic Latency"), config::AutoLatency,
-				T("Automatically set audio latency. Recommended"));
+		OptionCheckbox(T("Automatic audio latency"), config::AutoLatency,
+				T("Adjusts the audio buffer during play to avoid crackling. Lower latency responds faster but needs more CPU headroom."));
 #endif
     if (!config::AutoLatency
     		|| (config::AudioBackend.get() != "auto" && config::AudioBackend.get() != "android"))

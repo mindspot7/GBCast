@@ -3,7 +3,7 @@
   "games": [
     {
       "titles": ["CRAZY TAXI", "CRAZY TAXI (USA)"],
-      "low": { "renderer": "vulkan" }
+      "mid": { "renderer": "vulkan" }
     }
   ]
 }

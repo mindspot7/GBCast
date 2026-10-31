@@ -112,10 +112,10 @@ object GBCastBridge {
 
     suspend fun applyRecommendedPreset(): String {
         val device = withContext(Dispatchers.IO) { DeviceTier.detect() }
-        val preset = when (device.tier) {
-            DeviceTier.Tier.Entry, DeviceTier.Tier.Low -> "Compatible"
-            DeviceTier.Tier.Mid -> "Balanced"
-            DeviceTier.Tier.High -> "Quality"
+        val preset = when {
+            device.cpuLimited -> "Compatible"
+            device.gpuMaxScale >= 2 -> "Quality"
+            else -> "Balanced"
         }
         when (preset) {
             "Compatible" -> {
@@ -158,10 +158,10 @@ object GBCastBridge {
 
     fun deviceRecommendation(): String {
         val device = DeviceTier.detect()
-        val preset = when (device.tier) {
-            DeviceTier.Tier.Entry, DeviceTier.Tier.Low -> "Compatible"
-            DeviceTier.Tier.Mid -> "Balanced"
-            DeviceTier.Tier.High -> "Quality"
+        val preset = when {
+            device.cpuLimited -> "Compatible"
+            device.gpuMaxScale >= 2 -> "Quality"
+            else -> "Balanced"
         }
         return "$preset · ${device.summary}"
     }

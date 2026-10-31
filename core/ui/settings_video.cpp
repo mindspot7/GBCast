@@ -120,17 +120,17 @@ void gui_settings_video()
     	ImGui::Columns(has_per_pixel ? 3 : 2, "renderers", false);
     	ImGui::RadioButton(T("Per Triangle"), &renderer, 0);
         ImGui::SameLine();
-        ShowHelpMarker(T("Sort transparent polygons per triangle. Fast but may produce graphical glitches"));
+        ShowHelpMarker(T("Sorts each transparent polygon separately. This is usually the safest choice for correct overlap."));
     	ImGui::NextColumn();
     	ImGui::RadioButton(T("Per Strip"), &renderer, 1);
         ImGui::SameLine();
-        ShowHelpMarker(T("Sort transparent polygons per strip. Faster but may produce graphical glitches"));
+        ShowHelpMarker(T("Groups transparent polygons into strips before sorting. It can be faster, but some games may show incorrect overlap."));
         if (has_per_pixel)
         {
         	ImGui::NextColumn();
         	ImGui::RadioButton(T("Per Pixel"), &renderer, 2);
         	ImGui::SameLine();
-        	ShowHelpMarker(T("Sort transparent polygons per pixel. Slower but accurate"));
+        ShowHelpMarker(T("Checks transparent order for each pixel for the most accurate result. This is the slowest option."));
         }
     	ImGui::Columns(1, nullptr, false);
     	switch (renderer)
@@ -202,17 +202,17 @@ void gui_settings_video()
         ImGui::SameLine();
         ShowHelpMarker(T("Internal render resolution. Higher is better, but more demanding on the GPU. Values higher than your display resolution (but no more than double your display resolution) can be used for supersampling, which provides high-quality antialiasing without reducing sharpness."));
 		#ifndef __ANDROID__
-		OptionCheckbox(T("Integer Scaling"), config::IntegerScale, T("Scales the output by the maximum integer multiple allowed by the display resolution."));
+		OptionCheckbox(T("Integer scaling"), config::IntegerScale, T("Uses whole-number scale steps to keep pixels evenly sized. The picture may have larger borders."));
 		#endif
-		OptionCheckbox(T("Linear Interpolation"), config::LinearInterpolation, T("Scales the output with linear interpolation. Will use nearest neighbor interpolation otherwise. Disable with integer scaling."));
+		OptionCheckbox(T("Bilinear filtering"), config::LinearInterpolation, T("Smooths pixels when the image is resized. It looks softer than Nearest and has little performance cost."));
 #ifndef TARGET_IPHONE
-    	OptionCheckbox(T("VSync"), config::VSync, T("Synchronizes the frame rate with the screen refresh rate. Recommended"));
+		OptionCheckbox(T("VSync"), config::VSync, T("Matches frame display to the screen refresh to reduce tearing. It can add a little input delay or limit speed."));
     	ImGui::Indent();
 		{
 			DisabledScope scope(!config::VSync);
 #ifdef __ANDROID__
 			OptionCheckbox(T("Frame Pacing (Experimental)"), config::FramePacing,
-					T("Provide the GPU with presentation timing for each frame to replicate original frame pacing."));
+					T("Smooths uneven frame delivery by matching the console's original timing. It may add a small amount of waiting."));
 #else
 	    	if (isVulkan(config::RendererType))
 	    		OptionCheckbox(T("Duplicate frames"), config::DupeFrames, T("Duplicate frames on high refresh rate monitors (120 Hz and higher)"));
@@ -221,9 +221,8 @@ void gui_settings_video()
     	ImGui::Unindent();
 #endif
     	OptionCheckbox(T("Show VMU In-game"), config::FloatVMUs, T("Show the VMU LCD screens while in-game"));
-    	OptionCheckbox(T("Full Framebuffer Emulation"), config::EmulateFramebuffer,
-    			T("Fully accurate VRAM framebuffer emulation. Helps games that directly access the framebuffer for special effects. "
-    			"Very slow and incompatible with upscaling and wide screen."));
+		OptionCheckbox(T("Framebuffer emulation"), config::EmulateFramebuffer,
+				T("More accurately handles games that read the image back while drawing. It can be demanding and may conflict with upscaling or widescreen."));
 		{
 			DisabledScope scope(game_started);
 			OptionCheckbox(T("Load Custom Textures"), config::CustomTextures,
@@ -250,8 +249,8 @@ void gui_settings_video()
 					T("Use the full width of the screen or window when its aspect ratio is greater than 16:9.\nAspect Fill and remove black bars. Not compatible with integer scaling."));
 			ImGui::Unindent();
     	}
-    	OptionCheckbox(T("Widescreen Game Cheats"), config::WidescreenGameHacks,
-    			T("Modify the game so that it displays in 16:9 anamorphic format and use horizontal screen stretching. Only some games are supported."));
+		OptionCheckbox(T("Widescreen game hacks"), config::WidescreenGameHacks,
+				T("Uses built-in widescreen codes in supported games. It can show more of the scene, but may cause visual glitches."));
     	OptionSlider(T("Horizontal Stretching"), config::ScreenStretching, 100, 250,
     			T("Stretch the screen horizontally"), "%d%%");
 		#ifndef __ANDROID__

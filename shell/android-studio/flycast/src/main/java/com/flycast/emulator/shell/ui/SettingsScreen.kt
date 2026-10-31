@@ -326,16 +326,19 @@ private fun VideoPage(tick: Int, cfg: Cfg) {
         ChoiceRow("Texture filtering", null, listOf("Nearest", "Bilinear"), if (cfg.int("config", "rend.TextureFiltering") == 1) 0 else 1) {
             cfg.setInt("config", "rend.TextureFiltering", if (it == 0) 1 else 2)
         }
-        SettingsDivider()
-        val shaders = gb.frame.Shaders.menuOrder
-        ChoiceRow("Shader", "Picture shader after the frame. Applies the next time a game starts", shaders.map { gb.frame.Shaders.name(it) },
-            shaders.indexOf(cfg.int("config", "GBCast.Shader")).coerceAtLeast(0)) {
-            cfg.setInt("config", "GBCast.Shader", shaders[it])
-        }
-        SettingsDivider()
-        ChoiceRow("Filter", "Scaling of the shaded picture. Applies the next time a game starts", listOf("Nearest", "Bilinear"),
-            cfg.int("config", "GBCast.Filter").coerceIn(0, 1)) {
-            cfg.setInt("config", "GBCast.Filter", it)
+        // The kit's presenter (shaders and filters) draws the OpenGL ES renderers' frames
+        if (cfg.int("config", "pvr.rend") in intArrayOf(0, 3)) {
+            val shaders = gb.frame.Shaders.menuOrder
+            SettingsDivider()
+            ChoiceRow("Shader", "Picture shader after the frame, applied at once", shaders.map { gb.frame.Shaders.name(it) },
+                shaders.indexOf(cfg.int("config", "GBCast.Shader")).coerceAtLeast(0)) {
+                cfg.setInt("config", "GBCast.Shader", shaders[it])
+            }
+            SettingsDivider()
+            ChoiceRow("Filter", "Scaling of the shaded picture", listOf("Nearest", "Bilinear"),
+                cfg.int("config", "GBCast.Filter").coerceIn(0, 1)) {
+                cfg.setInt("config", "GBCast.Filter", it)
+            }
         }
         SettingsDivider()
         ChoiceRow("Anisotropic", null, listOf("Off", "2x", "4x", "8x", "16x"), indexOf(tick, intArrayOf(1, 2, 4, 8, 16), cfg.int("config", "rend.AnisotropicFiltering"))) {

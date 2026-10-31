@@ -308,23 +308,23 @@ object GbcastGameUi {
                     label = "Texture filtering", value = filters[filterIndex].second,
                 ) { setInt("config", "rend.TextureFiltering", filters[(filterIndex + 1) % filters.size].first) }
 
-                // The presenter's shader and filter apply the next time a game starts (the surface is set up at start)
-                val shaders = gb.frame.Shaders.menuOrder
-                val shaderIndex = shaders.indexOf(currentInt("config", "GBCast.Shader")).let { if (it < 0) 0 else it }
-                gb.frame.QuickMenuItemRow(
-                    id = "shader", icon = androidx.compose.material.icons.Icons.Default.Tune,
-                    label = "Shader", value = gb.frame.Shaders.name(shaders[shaderIndex]),
-                ) {
-                    setInt("config", "GBCast.Shader", shaders[(shaderIndex + 1) % shaders.size])
-                    toast("Shader applies the next time a game starts")
-                }
-                val presenterFilter = currentInt("config", "GBCast.Filter").coerceIn(0, 1)
-                gb.frame.QuickMenuItemRow(
-                    id = "presenter-filter", icon = androidx.compose.material.icons.Icons.Default.Tune,
-                    label = "Filter", value = if (presenterFilter == 0) "Nearest" else "Bilinear",
-                ) {
-                    setInt("config", "GBCast.Filter", if (presenterFilter == 0) 1 else 0)
-                    toast("Filter applies the next time a game starts")
+                // The kit's presenter (shaders and filters) draws the OpenGL ES renderers' frames, applied at once
+                if (renderer == 0 || renderer == 3) {
+                    val shaders = gb.frame.Shaders.menuOrder
+                    val shaderIndex = shaders.indexOf(currentInt("config", "GBCast.Shader")).let { if (it < 0) 0 else it }
+                    gb.frame.QuickMenuItemRow(
+                        id = "shader", icon = androidx.compose.material.icons.Icons.Default.Tune,
+                        label = "Shader", value = gb.frame.Shaders.name(shaders[shaderIndex]),
+                    ) {
+                        setInt("config", "GBCast.Shader", shaders[(shaderIndex + 1) % shaders.size])
+                    }
+                    val presenterFilter = currentInt("config", "GBCast.Filter").coerceIn(0, 1)
+                    gb.frame.QuickMenuItemRow(
+                        id = "presenter-filter", icon = androidx.compose.material.icons.Icons.Default.Tune,
+                        label = "Filter", value = if (presenterFilter == 0) "Nearest" else "Bilinear",
+                    ) {
+                        setInt("config", "GBCast.Filter", if (presenterFilter == 0) 1 else 0)
+                    }
                 }
 
                 val anisotropic = listOf(1, 2, 4, 8, 16)

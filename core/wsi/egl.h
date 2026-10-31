@@ -45,6 +45,7 @@ protected:
 	// Shaders and filters of the kit's presenter: the game renders off-screen and each frame goes to the presenter
 	bool presenterActive() const;
 	void presentThroughPresenter();
+	void applyPresenterMode(bool on);
 #endif
 
 	EGLDisplay display = EGL_NO_DISPLAY;
@@ -55,6 +56,10 @@ protected:
 	int currentSwapInterval = 1;
 #ifdef __ANDROID__
 	std::vector<uint32_t> presenterPixels;
+	EGLConfig eglConfig = nullptr;
+	bool presenterOn = false;
+	int presenterShader = -1;
+	int presenterFilter = -1;
 #endif
 };
 #endif

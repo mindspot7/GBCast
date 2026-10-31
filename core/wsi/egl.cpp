@@ -29,6 +29,8 @@
 #include <android/native_window.h> // requires ndk r5 or newer
 #include "gl_renderer.hpp"
 #include <algorithm>
+#include <chrono>
+#include <thread>
 #endif
 
 #ifndef SWAPPY
@@ -107,7 +109,9 @@ bool EGLGraphicsContext::init()
 		ANativeWindow_setBuffersGeometry((ANativeWindow *)window, 0, 0, format);
 #endif
 #ifdef __ANDROID__
-		if (presenterActive())
+		eglConfig = config;
+		presenterOn = presenterActive();
+		if (presenterOn)
 		{
 			// The presenter draws into the window; the game renders into an off-screen surface of the same size
 			ANativeWindow *nativeWindow = (ANativeWindow *)window;
@@ -230,9 +234,47 @@ bool EGLGraphicsContext::presenterActive() const
 	return config::PresenterShader != 0;
 }
 
+// Moves the game between the window (plain output) and an off-screen surface (presenter). Runs on the render thread:
+// the window is detached from the old owner before the new one takes it.
+void EGLGraphicsContext::applyPresenterMode(bool on)
+{
+	eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, context);
+	eglDestroySurface(display, surface);
+	surface = EGL_NO_SURFACE;
+	ANativeWindow *nativeWindow = (ANativeWindow *)window;
+	if (on)
+	{
+		ANativeWindow_acquire(nativeWindow); // SetWindow takes ownership of one reference
+		glr::SetWindow(nativeWindow);
+		EGLint pbufferAttrs[] = { EGL_WIDTH, ANativeWindow_getWidth(nativeWindow), EGL_HEIGHT, ANativeWindow_getHeight(nativeWindow), EGL_NONE };
+		surface = eglCreatePbufferSurface(display, eglConfig, pbufferAttrs);
+	}
+	else
+	{
+		glr::SetWindow(nullptr); // the presenter releases the window once it has dropped its surface: retry until then
+		for (int attempt = 0; attempt < 100 && surface == EGL_NO_SURFACE; attempt++)
+		{
+			surface = eglCreateWindowSurface(display, eglConfig, (EGLNativeWindowType)window, nullptr);
+			if (surface == EGL_NO_SURFACE)
+				std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		}
+	}
+	if (surface == EGL_NO_SURFACE)
+		ERROR_LOG(RENDERER, "EGL Error: could not set up the %s surface: %x", on ? "off-screen" : "window", eglGetError());
+	makeCurrent();
+	presenterOn = on;
+	presenterShader = presenterFilter = -1; // sends the shader and filter to the presenter on the next frame
+}
+
 // Reads the off-screen frame (OpenGL rows start at the bottom) and hands it to the presenter, top row first
 void EGLGraphicsContext::presentThroughPresenter()
 {
+	if (config::PresenterShader != presenterShader || config::PresenterFilter != presenterFilter)
+	{
+		presenterShader = config::PresenterShader;
+		presenterFilter = config::PresenterFilter;
+		glr::SetOptions(presenterFilter, presenterShader);
+	}
 	EGLint w, h;
 	eglQuerySurface(display, surface, EGL_WIDTH, &w);
 	eglQuerySurface(display, surface, EGL_HEIGHT, &h);
@@ -251,7 +293,9 @@ void EGLGraphicsContext::swap()
 	do_swap_automation();
 	changeSwapInterval();
 #ifdef __ANDROID__
-	if (presenterActive())
+	if (presenterActive() != presenterOn)
+		applyPresenterMode(presenterActive());
+	if (presenterOn)
 	{
 		presentThroughPresenter();
 		return;

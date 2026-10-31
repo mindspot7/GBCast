@@ -85,8 +85,15 @@ void SwappyGLGC::activate(bool enable)
 
 void SwappyGLGC::swap()
 {
-	// With a shader or filter the kit's presenter owns the window: frames go to it and Swappy stays off
+	// With a shader the kit's presenter owns the window: frames go to it and Swappy stays off. The switch happens here,
+	// on the render thread, so the game keeps running (Swappy lets go of the window before the presenter takes it)
 	const bool presenter = presenterActive();
+	if (presenter != presenterOn)
+	{
+		if (presenter)
+			activate(false);
+		applyPresenterMode(presenter);
+	}
 	activate(config::FramePacing && !presenter);
 	do_swap_automation();
 	changeSwapInterval();

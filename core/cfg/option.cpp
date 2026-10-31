@@ -110,7 +110,7 @@ Option<bool> LinearInterpolation("rend.LinearInterpolation", true);
 Option<bool> VSync("rend.vsync", true);
 Option<int64_t> PixelBufferSize("rend.PixelBufferSize", 512_MB);
 Option<int> AnisotropicFiltering("rend.AnisotropicFiltering", 1);
-Option<int> TextureFiltering("rend.TextureFiltering", 0); // Default
+Option<int> TextureFiltering("rend.TextureFiltering", 2); // Bilinear (1 Nearest, 2 Linear); matches GBSat's default
 Option<bool> ThreadedRendering("rend.ThreadedRendering", true);
 Option<bool> DupeFrames("rend.DupeFrames", false);
 Option<int> PerPixelLayers("rend.PerPixelLayers", 32);

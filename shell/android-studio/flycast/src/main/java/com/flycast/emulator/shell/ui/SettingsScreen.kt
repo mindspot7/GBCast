@@ -268,7 +268,7 @@ private fun SystemPage(tick: Int, cfg: Cfg, onFolder: () -> Unit, onBios: () -> 
             skipSaveWaits = SystemToggleSetting(cfg.bool("config", "GBFrame.SkipSaveWaits"), { cfg.setBool("config", "GBFrame.SkipSaveWaits", it) }),
         ),
         startupExtras = {
-            ToggleRow(Icons.Default.Speed, "Fast GD-ROM load", "Reduce emulated GD-ROM transfer delays. Independent of the automatic skip options; some games require original timing.", cfg.bool("config", "FastGDRomLoad")) {
+            ToggleRow(Icons.Default.Speed, "Fast CD load", "Reduce emulated GD-ROM transfer delays. Independent of the automatic skip options; some games require original timing.", cfg.bool("config", "FastGDRomLoad")) {
                 cfg.toggle("config", "FastGDRomLoad")
             }
         },
@@ -308,7 +308,7 @@ private fun VideoPage(tick: Int, cfg: Cfg) {
             cfg.setInt("config", "pvr.rend", rendererValues[it])
         }
         SettingsDivider()
-        ChoiceRow("Internal resolution", "480 is native. Applied by the GBCast renderer.", listOf("Native", "x2", "x3", "x4"), resolution) {
+        ChoiceRow("Enhanced resolution", "Sharper 3D sprites and polygons; higher values need a faster GPU. Native matches the screen", listOf("Native", "2x", "3x", "4x"), resolution) {
             cfg.setInt("config", "rend.Resolution", resolutionValues[it])
         }
         SettingsDivider()
@@ -323,10 +323,8 @@ private fun VideoPage(tick: Int, cfg: Cfg) {
         SettingsDivider()
         ToggleRow(Icons.Default.Tv, "VSync", "rend.vsync", cfg.bool("config", "rend.vsync")) { cfg.toggle("config", "rend.vsync") }
         SettingsDivider()
-        ToggleRow(Icons.Default.Tv, "Integer scale", "rend.IntegerScale", cfg.bool("config", "rend.IntegerScale")) { cfg.toggle("config", "rend.IntegerScale") }
-        SettingsDivider()
-        ChoiceRow("Texture filtering", null, listOf("Default", "Nearest", "Linear"), cfg.int("config", "rend.TextureFiltering").coerceIn(0, 2)) {
-            cfg.setInt("config", "rend.TextureFiltering", it)
+        ChoiceRow("Texture filtering", null, listOf("Nearest", "Bilinear"), if (cfg.int("config", "rend.TextureFiltering") == 1) 0 else 1) {
+            cfg.setInt("config", "rend.TextureFiltering", if (it == 0) 1 else 2)
         }
         SettingsDivider()
         ChoiceRow("Anisotropic", null, listOf("Off", "2x", "4x", "8x", "16x"), indexOf(tick, intArrayOf(1, 2, 4, 8, 16), cfg.int("config", "rend.AnisotropicFiltering"))) {
@@ -352,8 +350,6 @@ private fun VideoPage(tick: Int, cfg: Cfg) {
         ToggleRow(Icons.Default.Tune, "Delay frame swapping", null, cfg.bool("config", "rend.DelayFrameSwapping")) { cfg.toggle("config", "rend.DelayFrameSwapping") }
         SettingsDivider()
         ToggleRow(Icons.Default.Tune, "Emulate framebuffer", null, cfg.bool("config", "rend.EmulateFramebuffer")) { cfg.toggle("config", "rend.EmulateFramebuffer") }
-        SettingsDivider()
-        ToggleRow(Icons.Default.Tv, "Rotate 90°", "rend.Rotate90", cfg.bool("config", "rend.Rotate90")) { cfg.toggle("config", "rend.Rotate90") }
     }
 }
 
@@ -381,7 +377,7 @@ private fun PerformancePage(tick: Int, cfg: Cfg) {
     SettingsGroup("Performance", Icons.Default.Speed) {
         InfoRow("Recommended preset", GBCastBridge.deviceRecommendation())
         SettingsDivider()
-        ToggleRow(Icons.Default.Speed, "Dynarec", "Dynarec.Enabled", cfg.bool("config", "Dynarec.Enabled")) { cfg.toggle("config", "Dynarec.Enabled") }
+        ToggleRow(Icons.Default.Speed, "CPU recompiler", "On by default: faster on weak devices and less CPU use on the others, slightly less accurate. Turn off if a game misbehaves", cfg.bool("config", "Dynarec.Enabled")) { cfg.toggle("config", "Dynarec.Enabled") }
         SettingsDivider()
         ToggleRow(Icons.Default.Speed, "Threaded rendering", null, cfg.bool("config", "rend.ThreadedRendering")) { cfg.toggle("config", "rend.ThreadedRendering") }
         SettingsDivider()
@@ -407,8 +403,6 @@ private fun ExtrasPage(tick: Int, cfg: Cfg) {
         ToggleRow(Icons.Default.Wifi, "Battle cable", null, cfg.bool("network", "BattleCable")) { cfg.toggle("network", "BattleCable") }
         SettingsDivider()
         ToggleRow(Icons.Default.Wifi, "GGPO", "Rollback netplay. Host, delay and chat options are in the advanced network screen.", cfg.bool("network", "GGPO")) { cfg.toggle("network", "GGPO") }
-        SettingsDivider()
-        ToggleRow(Icons.Default.Info, "Upload crash logs", null, cfg.bool("config", "UploadCrashLogs")) { cfg.toggle("config", "UploadCrashLogs") }
     }
     gb.frame.RetroAchievementsSettings("GBCast")
 }

@@ -270,7 +270,7 @@ object GbcastGameUi {
                 val resolutionIndex = resolutionValues.indexOfFirst { it.first == resolution }.let { if (it < 0) 0 else it }
                 gb.frame.QuickMenuItemRow(
                     id = "resolution", icon = androidx.compose.material.icons.Icons.Default.AspectRatio,
-                    label = "Internal resolution", value = resolutionValues[resolutionIndex].second,
+                    label = "Enhanced resolution", value = resolutionValues[resolutionIndex].second,
                 ) {
                     setInt("config", "rend.Resolution", resolutionValues[(resolutionIndex + 1) % resolutionValues.size].first)
                 }
@@ -293,7 +293,6 @@ object GbcastGameUi {
 
                 for ((key, label) in listOf(
                     "rend.vsync" to "VSync",
-                    "rend.IntegerScale" to "Integer scale",
                 )) {
                     gb.frame.QuickMenuItemRow(
                         id = key, icon = androidx.compose.material.icons.Icons.Default.Tv,
@@ -301,9 +300,9 @@ object GbcastGameUi {
                     ) { setBool("config", key, !currentBool("config", key)) }
                 }
 
-                val filters = listOf(0 to "Default", 1 to "Nearest", 2 to "Linear")
+                val filters = listOf(1 to "Nearest", 2 to "Bilinear")
                 val filter = currentInt("config", "rend.TextureFiltering")
-                val filterIndex = filters.indexOfFirst { it.first == filter }.let { if (it < 0) 0 else it }
+                val filterIndex = filters.indexOfFirst { it.first == filter }.let { if (it < 0) 1 else it }
                 gb.frame.QuickMenuItemRow(
                     id = "texture-filter", icon = androidx.compose.material.icons.Icons.Default.Tune,
                     label = "Texture filtering", value = filters[filterIndex].second,
@@ -367,10 +366,10 @@ object GbcastGameUi {
             gb.frame.QuickMenuPage("performance", "Performance") {
 
                 for ((key, label) in listOf(
-                    "Dynarec.Enabled" to "Dynarec",
+                    "Dynarec.Enabled" to "CPU recompiler",
                     "rend.ThreadedRendering" to "Threaded rendering",
                     "rend.FramePacing" to "Frame pacing",
-                    "FastGDRomLoad" to "Fast GD-ROM load",
+                    "FastGDRomLoad" to "Fast CD load",
                 )) {
                     gb.frame.QuickMenuItemRow(
                         id = key, icon = androidx.compose.material.icons.Icons.Default.Speed,

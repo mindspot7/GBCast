@@ -11,10 +11,13 @@ transparency-order artifacts.
 
 Enhanced resolution changes the PVR render target above native resolution. It
 can sharpen 3D polygons and sprites, but increases GPU work and render-target
-memory. Shader and Filter are GBFrame's OpenGL ES output pass; Shader applies a
-picture effect and Filter chooses Nearest or Bilinear scaling. Core Texture
-filtering is separate: it controls texture sampling inside Flycast. Both filter
-menus offer Nearest and Bilinear, with Bilinear as the default.
+memory. Shader and Filter are GBFrame's shared output pass for GLES and Vulkan:
+Shader applies a picture effect and Filter chooses Nearest or Bilinear scaling.
+On Android, Vulkan frames are handed to the GBFrame GLES presenter through
+AHardwareBuffer when supported; staged CPU frame delivery remains the fallback.
+Core Texture filtering is separate: it controls texture sampling inside
+Flycast. Both filter menus offer Nearest and Bilinear, with Bilinear as the
+default.
 
 ## Loading and performance
 

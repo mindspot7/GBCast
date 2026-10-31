@@ -338,16 +338,13 @@ private fun VideoPage(tick: Int, cfg: Cfg) {
         gb.frame.TextureFilterSettingsRow(cfg.int("config", "rend.TextureFiltering")) {
             cfg.setInt("config", "rend.TextureFiltering", it)
         }
-        // The kit's presenter (shaders and filters) draws the OpenGL ES renderers' frames
-        if (cfg.int("config", "pvr.rend") in intArrayOf(0, 3)) {
-            SettingsDivider()
-            gb.frame.ShaderSettingsRow(cfg.int("config", "GBCast.Shader")) {
-                cfg.setInt("config", "GBCast.Shader", it)
-            }
-            SettingsDivider()
-            gb.frame.PictureFilterSettingsRow(cfg.int("config", "GBCast.Filter"), sub = "Scaling of the shaded picture") {
-                cfg.setInt("config", "GBCast.Filter", it)
-            }
+        SettingsDivider()
+        gb.frame.ShaderSettingsRow(cfg.int("config", "GBCast.Shader")) {
+            cfg.setInt("config", "GBCast.Shader", it)
+        }
+        SettingsDivider()
+        gb.frame.PictureFilterSettingsRow(cfg.int("config", "GBCast.Filter"), sub = "Scaling of the shaded picture") {
+            cfg.setInt("config", "GBCast.Filter", it)
         }
         SettingsDivider()
         ChoiceRow("Anisotropic", null, listOf("Off", "2x", "4x", "8x", "16x"), indexOf(tick, intArrayOf(1, 2, 4, 8, 16), cfg.int("config", "rend.AnisotropicFiltering"))) {

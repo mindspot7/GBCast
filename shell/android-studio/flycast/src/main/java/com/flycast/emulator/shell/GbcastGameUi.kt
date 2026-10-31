@@ -304,14 +304,11 @@ object GbcastGameUi {
                     setInt("config", "rend.TextureFiltering", it)
                 }
 
-                // The kit's presenter (shaders and filters) draws the OpenGL ES renderers' frames, applied at once
-                if (renderer == 0 || renderer == 3) {
-                    gb.frame.ShaderQuickMenuItem(currentInt("config", "GBCast.Shader")) {
-                        setInt("config", "GBCast.Shader", it)
-                    }
-                    gb.frame.PictureFilterQuickMenuItem(currentInt("config", "GBCast.Filter"), id = "presenter-filter") {
-                        setInt("config", "GBCast.Filter", it)
-                    }
+                gb.frame.ShaderQuickMenuItem(currentInt("config", "GBCast.Shader")) {
+                    setInt("config", "GBCast.Shader", it)
+                }
+                gb.frame.PictureFilterQuickMenuItem(currentInt("config", "GBCast.Filter"), id = "presenter-filter") {
+                    setInt("config", "GBCast.Filter", it)
                 }
 
                 val anisotropic = listOf(1, 2, 4, 8, 16)

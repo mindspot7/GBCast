@@ -20,6 +20,7 @@
 */
 #include "vulkan_context.h"
 #include "vulkan_renderer.h"
+#include "texture.h"
 #include "imgui.h"
 #include "imgui_impl_vulkan.h"
 #include "ui/gui.h"
@@ -48,6 +49,172 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 #include <vulkan/vulkan_format_traits.hpp>
 #include <algorithm>
 #include <cstring>
+
+#if defined(__ANDROID__)
+#include <android/native_window.h>
+#include "gl_renderer.hpp"
+#endif
+
+struct AndroidPresenterFrame {
+    std::unique_ptr<FramebufferAttachment> color;
+    vk::UniqueFramebuffer framebuffer;
+    uint64_t outputToken = 0;
+    bool outputPending = false;
+    bool outputUsesAHB = false;
+};
+
+#if defined(__ANDROID__)
+struct AndroidPresenterImage {
+    AHardwareBuffer *buffer = nullptr; // owns the reference returned by AcquireVulkanTarget
+    VkImage image = VK_NULL_HANDLE;
+    VkImageView imageView = VK_NULL_HANDLE;
+    VkDeviceMemory memory = VK_NULL_HANDLE;
+    uint64_t token = 0;
+    uint32_t width = 0;
+    uint32_t height = 0;
+    VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
+};
+
+static void DestroyAndroidPresenterImage(VkDevice device, AndroidPresenterImage &target)
+{
+	auto &dispatch = VULKAN_HPP_DEFAULT_DISPATCHER;
+	if (target.imageView != VK_NULL_HANDLE) dispatch.vkDestroyImageView(device, target.imageView, nullptr);
+	if (target.image != VK_NULL_HANDLE) dispatch.vkDestroyImage(device, target.image, nullptr);
+	if (target.memory != VK_NULL_HANDLE) dispatch.vkFreeMemory(device, target.memory, nullptr);
+	if (target.buffer) AHardwareBuffer_release(target.buffer);
+	target = {};
+}
+
+static bool ImportAndroidPresenterImage(VkDevice device, VkPhysicalDevice physicalDevice,
+		AndroidPresenterImage &target, AHardwareBuffer *buffer, uint64_t token, uint32_t width, uint32_t height)
+{
+	if (!buffer) return false;
+	if (target.token == token && target.buffer == buffer && target.width == width && target.height == height) return true;
+	DestroyAndroidPresenterImage(device, target);
+
+	AHardwareBuffer_Desc desc{};
+	AHardwareBuffer_describe(buffer, &desc);
+	if (desc.width != width || desc.height != height || desc.format != AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM) return false;
+
+	auto getProperties = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetAndroidHardwareBufferPropertiesANDROID;
+	if (!getProperties) return false;
+	VkAndroidHardwareBufferFormatPropertiesANDROID formatProps{VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_FORMAT_PROPERTIES_ANDROID};
+	VkAndroidHardwareBufferPropertiesANDROID ahbProps{VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_PROPERTIES_ANDROID};
+	ahbProps.pNext = &formatProps;
+	if (getProperties(device, buffer, &ahbProps) != VK_SUCCESS ||
+		formatProps.format != VK_FORMAT_R8G8B8A8_UNORM || formatProps.externalFormat != 0) return false;
+
+	VkExternalMemoryImageCreateInfo externalImage{VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO};
+	externalImage.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID;
+	VkImageCreateInfo imageInfo{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
+	imageInfo.pNext = &externalImage;
+	imageInfo.imageType = VK_IMAGE_TYPE_2D;
+	imageInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+	imageInfo.extent = {width, height, 1};
+	imageInfo.mipLevels = 1;
+	imageInfo.arrayLayers = 1;
+	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+	imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+	imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	if (VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateImage(device, &imageInfo, nullptr, &target.image) != VK_SUCCESS) {
+		DestroyAndroidPresenterImage(device, target);
+		return false;
+	}
+
+	VkMemoryRequirements requirements{};
+	VULKAN_HPP_DEFAULT_DISPATCHER.vkGetImageMemoryRequirements(device, target.image, &requirements);
+	const uint32_t memoryTypeBits = requirements.memoryTypeBits & ahbProps.memoryTypeBits;
+	VkPhysicalDeviceMemoryProperties memoryProperties{};
+	VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
+	uint32_t memoryType = UINT32_MAX;
+	for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; ++i) {
+		if (memoryTypeBits & (1u << i)) { memoryType = i; break; }
+	}
+	if (memoryType == UINT32_MAX) {
+		DestroyAndroidPresenterImage(device, target);
+		return false;
+	}
+
+	VkMemoryDedicatedAllocateInfo dedicated{VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO};
+	dedicated.image = target.image;
+	VkImportAndroidHardwareBufferInfoANDROID importInfo{VK_STRUCTURE_TYPE_IMPORT_ANDROID_HARDWARE_BUFFER_INFO_ANDROID};
+	importInfo.pNext = &dedicated;
+	importInfo.buffer = buffer;
+	VkMemoryAllocateInfo allocation{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
+	allocation.pNext = &importInfo;
+	allocation.allocationSize = ahbProps.allocationSize;
+	allocation.memoryTypeIndex = memoryType;
+	if (VULKAN_HPP_DEFAULT_DISPATCHER.vkAllocateMemory(device, &allocation, nullptr, &target.memory) != VK_SUCCESS ||
+		VULKAN_HPP_DEFAULT_DISPATCHER.vkBindImageMemory(device, target.image, target.memory, 0) != VK_SUCCESS) {
+		DestroyAndroidPresenterImage(device, target);
+		return false;
+	}
+
+	VkImageViewCreateInfo viewInfo{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+	viewInfo.image = target.image;
+	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	viewInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+	viewInfo.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+	if (VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateImageView(device, &viewInfo, nullptr, &target.imageView) != VK_SUCCESS) {
+		DestroyAndroidPresenterImage(device, target);
+		return false;
+	}
+	target.buffer = buffer; // take ownership of the reference returned by glr::AcquireVulkanTarget
+	target.token = token;
+	target.width = width;
+	target.height = height;
+	target.layout = VK_IMAGE_LAYOUT_UNDEFINED;
+	return true;
+}
+
+static void RecordAndroidPresenterCopy(VkCommandBuffer commandBuffer, VkImage source, uint32_t width, uint32_t height,
+		AndroidPresenterImage &target, uint32_t graphicsQueueFamily)
+{
+	VkImageMemoryBarrier sourceBarrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+	sourceBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	sourceBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+	sourceBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	sourceBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	sourceBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	sourceBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	sourceBarrier.image = source;
+	sourceBarrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+	VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+		0, 0, nullptr, 0, nullptr, 1, &sourceBarrier);
+
+	VkImageMemoryBarrier acquire{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+	acquire.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	acquire.oldLayout = target.layout;
+	acquire.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	acquire.srcQueueFamilyIndex = target.layout == VK_IMAGE_LAYOUT_UNDEFINED ? VK_QUEUE_FAMILY_IGNORED : VK_QUEUE_FAMILY_FOREIGN_EXT;
+	acquire.dstQueueFamilyIndex = target.layout == VK_IMAGE_LAYOUT_UNDEFINED ? VK_QUEUE_FAMILY_IGNORED : graphicsQueueFamily;
+	acquire.image = target.image;
+	acquire.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+	VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+		0, 0, nullptr, 0, nullptr, 1, &acquire);
+
+	VkImageCopy copy{};
+	copy.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+	copy.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+	copy.extent = {width, height, 1};
+	VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdCopyImage(commandBuffer, source, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, target.image,
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
+
+	VkImageMemoryBarrier release{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+	release.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	release.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	release.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+	release.srcQueueFamilyIndex = graphicsQueueFamily;
+	release.dstQueueFamilyIndex = VK_QUEUE_FAMILY_FOREIGN_EXT;
+	release.image = target.image;
+	release.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+	VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+		0, 0, nullptr, 0, nullptr, 1, &release);
+	target.layout = VK_IMAGE_LAYOUT_GENERAL;
+}
+#endif
 
 void ReInitOSD();
 
@@ -400,10 +567,11 @@ bool VulkanContext::InitDevice()
 				std::find_if(queueFamilyProperties.begin(), queueFamilyProperties.end(),
 						[](vk::QueueFamilyProperties const& qfp) { return qfp.queueFlags & vk::QueueFlagBits::eGraphics; }));
 
-		// determine a queueFamilyIndex that supports present
-		// first check if the graphicsQueueFamilyIndex is good enough
-		presentQueueIndex = physicalDevice.getSurfaceSupportKHR(graphicsQueueIndex, GetSurface()) ? graphicsQueueIndex : queueFamilyProperties.size();
-		if (presentQueueIndex == queueFamilyProperties.size())
+		// The GBFrame output path renders off-screen and presents through its GLES window presenter, so it needs only
+		// a graphics queue. The regular Vulkan path still selects a surface-compatible present queue.
+		presentQueueIndex = gbFramePresenter ? graphicsQueueIndex :
+			physicalDevice.getSurfaceSupportKHR(graphicsQueueIndex, GetSurface()) ? graphicsQueueIndex : queueFamilyProperties.size();
+		if (!gbFramePresenter && presentQueueIndex == queueFamilyProperties.size())
 		{
 			// the graphicsQueueFamilyIndex doesn't support present -> look for an other family index that supports both graphics and present
 			for (size_t i = 0; i < queueFamilyProperties.size(); i++)
@@ -462,8 +630,19 @@ bool VulkanContext::InitDevice()
 			return false;
 		};
 
-		// Required swapchain extension
-		tryAddDeviceExtension(vk::KHRSwapchainExtensionName);
+		// Required only when Vulkan itself owns the Android window surface.
+		if (!gbFramePresenter)
+			tryAddDeviceExtension(vk::KHRSwapchainExtensionName);
+
+#if defined(__ANDROID__)
+		if (gbFramePresenter) {
+			const bool ahb = tryAddDeviceExtension(VK_ANDROID_EXTERNAL_MEMORY_ANDROID_HARDWARE_BUFFER_EXTENSION_NAME);
+			const bool foreign = tryAddDeviceExtension(VK_EXT_QUEUE_FAMILY_FOREIGN_EXTENSION_NAME);
+			gbFramePresenterAHBInterop = ahb && foreign;
+			if (!gbFramePresenterAHBInterop)
+				NOTICE_LOG(RENDERER, "GBFrame Vulkan AHardwareBuffer import unavailable; using staged CPU frame delivery");
+		}
+#endif
 
 #ifdef VK_ENABLE_BETA_EXTENSIONS
 		tryAddDeviceExtension(vk::KHRPortabilitySubsetExtensionName);
@@ -583,7 +762,8 @@ bool VulkanContext::InitDevice()
 	    // Queues
 	    graphicsQueue = device->getQueue(graphicsQueueIndex, 0);
 	    presentQueue = device->getQueue(presentQueueIndex, 0);
-	    swappyvk::setQueueFamilyIndex(googleTimingSupported, device.get(), presentQueue, presentQueueIndex);
+	    if (!gbFramePresenter)
+		    swappyvk::setQueueFamilyIndex(googleTimingSupported, device.get(), presentQueue, presentQueueIndex);
 
 	    // Descriptor pool
         std::array<vk::DescriptorPoolSize, 11> pool_sizes =
@@ -683,6 +863,10 @@ bool VulkanContext::InitDevice()
 
 void VulkanContext::CreateSwapChain()
 {
+	if (gbFramePresenter) {
+		CreateGBFramePresenterTargets();
+		return;
+	}
 	try
 	{
 		device->waitIdle();
@@ -913,10 +1097,147 @@ void VulkanContext::CreateSwapChain()
 	}
 }
 
+void VulkanContext::DestroyGBFramePresenterImages()
+{
+#if defined(__ANDROID__)
+	if (device) {
+		for (auto &entry : gbFramePresenterImages) {
+			if (!entry) continue;
+			DestroyAndroidPresenterImage(device.get(), *entry);
+		}
+	}
+#endif
+	gbFramePresenterImages.clear();
+}
+
+void VulkanContext::FlushGBFramePresenterFrames(bool wait)
+{
+#if defined(__ANDROID__)
+	if (!gbFramePresenter || !device) return;
+	const int filter = config::PresenterFilter;
+	const int shader = config::PresenterShader;
+	if (filter != gbFramePresenterLastFilter || shader != gbFramePresenterLastShader) {
+		gbFramePresenterLastFilter = filter;
+		gbFramePresenterLastShader = shader;
+		glr::SetOptions(filter, shader);
+	}
+	if (wait) device->waitIdle();
+	for (size_t i = 0; i < gbFramePresenterFrames.size(); ++i) {
+		auto &frame = *gbFramePresenterFrames[i];
+		if (!frame.outputPending) continue;
+		if (!wait && device->getFenceStatus(*drawFences[i]) != vk::Result::eSuccess) continue;
+		if (frame.outputUsesAHB) {
+			glr::SubmitVulkanTarget(frame.outputToken, width, height, 1);
+		} else if (frame.color && frame.color->GetBufferData()) {
+			const auto *readback = frame.color->GetBufferData();
+			const auto *pixels = static_cast<const uint32_t *>(readback->MapMemory());
+			glr::Submit(pixels, width, height, 1);
+			readback->UnmapMemory();
+		}
+		frame.outputPending = false;
+		frame.outputUsesAHB = false;
+		frame.outputToken = 0;
+	}
+#else
+	(void)wait;
+#endif
+}
+
+void VulkanContext::CreateGBFramePresenterTargets()
+{
+#if defined(__ANDROID__)
+	try {
+		FlushGBFramePresenterFrames(true);
+		if (overlay && renderPass) overlay->Term();
+		framebuffers.clear();
+		gbFramePresenterFrames.clear();
+		imageViews.clear();
+		drawFences.clear();
+		imageAcquiredSemaphores.clear();
+		renderCompleteSemaphores.clear();
+		commandBuffers.clear();
+		commandPools.clear();
+		inFlightObjects.clear();
+		renderPass.reset();
+		DestroyGBFramePresenterImages();
+
+		auto *nativeWindow = static_cast<ANativeWindow *>(window);
+		if (!nativeWindow) throw InvalidVulkanContext();
+		const u32 targetWidth = static_cast<u32>(ANativeWindow_getWidth(nativeWindow));
+		const u32 targetHeight = static_cast<u32>(ANativeWindow_getHeight(nativeWindow));
+		SetWindowSize(targetWidth, targetHeight);
+		resized = false;
+		if (!IsValid()) throw InvalidVulkanContext();
+
+		presentFormat = vk::Format::eR8G8B8A8Unorm;
+		depthFormat = findDepthFormat(physicalDevice);
+		if (depthFormat == vk::Format::eUndefined) throw InvalidVulkanContext();
+
+		vk::AttachmentDescription colorAttachment({}, presentFormat, vk::SampleCountFlagBits::e1,
+			vk::AttachmentLoadOp::eClear, vk::AttachmentStoreOp::eStore,
+			vk::AttachmentLoadOp::eDontCare, vk::AttachmentStoreOp::eDontCare,
+			vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferSrcOptimal);
+		vk::AttachmentReference colorReference(0, vk::ImageLayout::eColorAttachmentOptimal);
+		vk::SubpassDescription subpass({}, vk::PipelineBindPoint::eGraphics, nullptr, colorReference, nullptr, nullptr);
+		renderPass = device->createRenderPassUnique(vk::RenderPassCreateInfo({}, colorAttachment, subpass));
+
+		constexpr size_t kFrameCount = 3;
+		gbFramePresenterFrames.reserve(kFrameCount);
+		framebuffers.reserve(kFrameCount);
+		drawFences.reserve(kFrameCount);
+		commandPools.reserve(kFrameCount);
+		commandBuffers.reserve(kFrameCount);
+		for (size_t i = 0; i < kFrameCount; ++i) {
+			auto frame = std::make_unique<AndroidPresenterFrame>();
+			frame->color = std::make_unique<FramebufferAttachment>(physicalDevice, *device);
+			frame->color->Init(width, height, presentFormat,
+				vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc,
+				"GBFrame Vulkan output");
+			const std::array<vk::ImageView, 1> attachments = {frame->color->GetImageView()};
+			framebuffers.push_back(device->createFramebufferUnique(vk::FramebufferCreateInfo({}, *renderPass,
+				attachments, width, height, 1)));
+			drawFences.push_back(device->createFenceUnique(vk::FenceCreateInfo(vk::FenceCreateFlagBits::eSignaled)));
+			commandPools.push_back(device->createCommandPoolUnique(vk::CommandPoolCreateInfo(
+				vk::CommandPoolCreateFlagBits::eTransient, graphicsQueueIndex)));
+			commandBuffers.push_back(std::move(device->allocateCommandBuffersUnique(vk::CommandBufferAllocateInfo(
+				*commandPools.back(), vk::CommandBufferLevel::ePrimary, 1)).front()));
+			gbFramePresenterFrames.push_back(std::move(frame));
+		}
+		imageAcquiredSemaphores.reserve(kFrameCount);
+		renderCompleteSemaphores.reserve(kFrameCount);
+		for (size_t i = 0; i < kFrameCount; ++i) {
+			imageAcquiredSemaphores.push_back(device->createSemaphoreUnique(vk::SemaphoreCreateInfo()));
+			renderCompleteSemaphores.push_back(device->createSemaphoreUnique(vk::SemaphoreCreateInfo()));
+		}
+		inFlightObjects.resize(kFrameCount);
+		gbFramePresenterImages.reserve(4);
+		for (size_t i = 0; i < 4; ++i)
+			gbFramePresenterImages.push_back(std::make_unique<AndroidPresenterImage>());
+		currentSemaphore = 0;
+		quadPipeline->Init(shaderManager.get(), *renderPass, 0);
+		quadPipelineWithAlpha->Init(shaderManager.get(), *renderPass, 0);
+		quadDrawer->Init(quadPipeline.get());
+		quadRotatePipeline->Init(shaderManager.get(), *renderPass, 0);
+		quadRotateDrawer->Init(quadRotatePipeline.get());
+		overlay->Init(quadPipelineWithAlpha.get());
+		InitImgui();
+		currentImage = static_cast<int>(kFrameCount) - 1;
+		lastFrameView = vk::ImageView();
+		ReInitOSD();
+		INFO_LOG(RENDERER, "GBFrame Vulkan presenter targets ready: %u x %u, %zu frames", width, height, kFrameCount);
+	} catch (const vk::SystemError &err) {
+		ERROR_LOG(RENDERER, "GBFrame Vulkan presenter target creation failed: %s", err.what());
+		SetWindowSize(0, 0);
+		throw InvalidVulkanContext();
+	}
+#endif
+}
+
 bool VulkanContext::init()
 {
 	std::vector<const char *> extensions;
-	extensions.push_back(vk::KHRSurfaceExtensionName);
+	if (!gbFramePresenter)
+		extensions.push_back(vk::KHRSurfaceExtensionName);
 #if defined(USE_SDL)
 	if (!sdl_recreate_window(SDL_WINDOW_VULKAN))
 		return false;
@@ -933,9 +1254,10 @@ bool VulkanContext::init()
 #elif defined(VK_USE_PLATFORM_XLIB_KHR)
 	extensions.push_back(vk::KHRXlibSurfaceExtensionName);
 #elif defined(VK_USE_PLATFORM_ANDROID_KHR)
-	extensions.push_back(vk::KHRAndroidSurfaceExtensionName);
+	if (!gbFramePresenter)
+		extensions.push_back(vk::KHRAndroidSurfaceExtensionName);
 #endif
-	if (!InitInstance(&extensions[0], extensions.size())) {
+	if (!InitInstance(extensions.data(), extensions.size())) {
 		term();
 		return false;
 	}
@@ -955,9 +1277,12 @@ bool VulkanContext::init()
 #elif defined(VK_USE_PLATFORM_XLIB_KHR)
 	vk::XlibSurfaceCreateInfoKHR createInfo(vk::XlibSurfaceCreateFlagsKHR(), (Display*)display, (Window)window);
 	surface = instance->createXlibSurfaceKHRUnique(createInfo);
+
 #elif defined(VK_USE_PLATFORM_ANDROID_KHR)
+	if (!gbFramePresenter) {
 	vk::AndroidSurfaceCreateInfoKHR createInfo(vk::AndroidSurfaceCreateFlagsKHR(), (struct ANativeWindow*)window);
 	surface = instance->createAndroidSurfaceKHRUnique(createInfo);
+	}
 #elif defined(VK_USE_PLATFORM_METAL_EXT)
 	vk::MetalSurfaceCreateInfoEXT createInfo(vk::MetalSurfaceCreateFlagsEXT(), window);
 	surface = instance->createMetalSurfaceEXTUnique(createInfo);
@@ -970,12 +1295,35 @@ bool VulkanContext::init()
 		term();
 		return false;
 	}
+	#if defined(__ANDROID__)
+	if (gbFramePresenter) {
+		ANativeWindow_acquire(static_cast<ANativeWindow *>(window));
+		glr::SetWindow(static_cast<ANativeWindow *>(window));
+		glr::SetOptions(config::PresenterFilter, config::PresenterShader);
+		gbFramePresenterLastFilter = config::PresenterFilter;
+		gbFramePresenterLastShader = config::PresenterShader;
+		glr::SetColorCorrection(0);
+	}
+	#endif
 
 	return true;
 }
 
 bool VulkanContext::recreateSwapChainIfNeeded()
 {
+	if (gbFramePresenter) {
+#if defined(__ANDROID__)
+		auto *nativeWindow = static_cast<ANativeWindow *>(window);
+		const bool dimensionsChanged = nativeWindow &&
+			(static_cast<u32>(ANativeWindow_getWidth(nativeWindow)) != width ||
+			 static_cast<u32>(ANativeWindow_getHeight(nativeWindow)) != height);
+		if (resized || dimensionsChanged) {
+			CreateSwapChain();
+			return true;
+		}
+#endif
+		return false;
+	}
 	if (resized || HasSurfaceDimensionChanged())
 	{
 		CreateSwapChain();
@@ -991,6 +1339,24 @@ void VulkanContext::NewFrame()
 	recreateSwapChainIfNeeded();
 	if (!IsValid())
 		throw InvalidVulkanContext();
+	if (gbFramePresenter) {
+		currentImage = (currentImage + 1) % GetSwapChainSize();
+		try {
+			const vk::Result res = device->waitForFences(*drawFences[currentImage], true, UINT64_MAX);
+			if (res != vk::Result::eSuccess) throw InvalidVulkanContext();
+		} catch (const vk::SystemError& e) {
+			WARN_LOG(RENDERER, "vk:SystemError waiting for GBFrame output slot: %s", e.what());
+			throw FlycastException("Vulkan system error");
+		}
+		FlushGBFramePresenterFrames(false);
+		device->resetCommandPool(*commandPools[currentImage], vk::CommandPoolResetFlagBits::eReleaseResources);
+		inFlightObjects[currentImage].clear();
+		vk::CommandBuffer commandBuffer = *commandBuffers[currentImage];
+		commandBuffer.begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
+		assert(!rendering);
+		rendering = true;
+		return;
+	}
 	vk::Result res = device->acquireNextImageKHR(*swapChain, UINT64_MAX, *imageAcquiredSemaphores[currentSemaphore], nullptr, &currentImage);
 	if (res != vk::Result::eSuccess)
 		throw InvalidVulkanContext();
@@ -1026,6 +1392,83 @@ void VulkanContext::EndFrame(vk::CommandBuffer overlayCmdBuffer)
 		return;
 	vk::CommandBuffer commandBuffer = *commandBuffers[currentImage];
 	commandBuffer.endRenderPass();
+	if (gbFramePresenter) {
+#if defined(__ANDROID__)
+		auto &frame = *gbFramePresenterFrames[currentImage];
+		frame.outputPending = false;
+		frame.outputUsesAHB = false;
+		frame.outputToken = 0;
+		const vk::Image source = frame.color->GetImage();
+		bool externalTarget = false;
+		if (gbFramePresenterAHBInterop) {
+			const glr::VulkanTarget target = glr::AcquireVulkanTarget(width, height);
+			if (target.buffer && target.token) {
+				const uint32_t slot = static_cast<uint32_t>(target.token);
+				if (slot < gbFramePresenterImages.size()) {
+					auto &image = *gbFramePresenterImages[slot];
+					const bool alreadyImported = image.token == target.token && image.buffer == target.buffer &&
+						image.width == width && image.height == height;
+					if (ImportAndroidPresenterImage(static_cast<VkDevice>(*device), static_cast<VkPhysicalDevice>(physicalDevice),
+						image, target.buffer, target.token, width, height)) {
+						if (alreadyImported) AHardwareBuffer_release(target.buffer); // release the new acquire reference
+						RecordAndroidPresenterCopy(static_cast<VkCommandBuffer>(commandBuffer), static_cast<VkImage>(source),
+							width, height, image, graphicsQueueIndex);
+						frame.outputToken = target.token;
+						frame.outputUsesAHB = true;
+						externalTarget = true;
+					} else {
+						glr::CancelVulkanTarget(target.token);
+						AHardwareBuffer_release(target.buffer);
+						gbFramePresenterAHBInterop = false;
+						WARN_LOG(RENDERER, "GBFrame AHardwareBuffer import failed; using staged CPU frame delivery");
+					}
+				} else {
+					glr::CancelVulkanTarget(target.token);
+					AHardwareBuffer_release(target.buffer);
+				}
+			}
+		}
+		if (!externalTarget) {
+			VkImageMemoryBarrier sourceBarrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+			sourceBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			sourceBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+			sourceBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+			sourceBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+			sourceBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			sourceBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			sourceBarrier.image = static_cast<VkImage>(source);
+			sourceBarrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+			VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdPipelineBarrier(static_cast<VkCommandBuffer>(commandBuffer), VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+				VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &sourceBarrier);
+			VkBufferImageCopy region{};
+			region.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+			region.imageExtent = {width, height, 1};
+			const VkBuffer readback = static_cast<VkBuffer>(*frame.color->GetBufferData()->buffer);
+			VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdCopyImageToBuffer(static_cast<VkCommandBuffer>(commandBuffer), static_cast<VkImage>(source),
+				VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, readback, 1, &region);
+			VkBufferMemoryBarrier hostBarrier{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER};
+			hostBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			hostBarrier.dstAccessMask = VK_ACCESS_HOST_READ_BIT;
+			hostBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			hostBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			hostBarrier.buffer = readback;
+			hostBarrier.size = VK_WHOLE_SIZE;
+			VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdPipelineBarrier(static_cast<VkCommandBuffer>(commandBuffer), VK_PIPELINE_STAGE_TRANSFER_BIT,
+				VK_PIPELINE_STAGE_HOST_BIT, 0, 0, nullptr, 1, &hostBarrier, 0, nullptr);
+		}
+		commandBuffer.end();
+		std::vector<vk::CommandBuffer> allCmdBuffers;
+		if (overlayCmdBuffer) allCmdBuffers.push_back(overlayCmdBuffer);
+		allCmdBuffers.push_back(commandBuffer);
+		device->resetFences(*drawFences[currentImage]);
+		graphicsQueue.submit(vk::SubmitInfo({}, {}, allCmdBuffers, {}), *drawFences[currentImage]);
+		frame.outputPending = true;
+		assert(rendering);
+		rendering = false;
+		renderDone = true;
+#endif
+		return;
+	}
 	commandBuffer.end();
 	vk::PipelineStageFlags wait_stage(vk::PipelineStageFlagBits::eColorAttachmentOutput);
 	std::vector<vk::CommandBuffer> allCmdBuffers;
@@ -1044,6 +1487,11 @@ void VulkanContext::Present() noexcept
 {
 	if (renderDone)
 	{
+		if (gbFramePresenter) {
+			FlushGBFramePresenterFrames(false);
+			renderDone = false;
+			return;
+		}
 		try {
 			DoSwapAutomation();
 			vk::Result res = swappyvk::present(presentQueue, vk::PresentInfoKHR(1, &(*renderCompleteSemaphores[currentSemaphore]), 1, &(*swapChain), &currentImage));
@@ -1222,6 +1670,13 @@ void VulkanContext::term()
 	lastFrameView = nullptr;
 	if (device && graphicsQueue)
 		WaitIdle();
+	if (gbFramePresenter) {
+		FlushGBFramePresenterFrames(true);
+		DestroyGBFramePresenterImages();
+#if defined(__ANDROID__)
+		glr::SetWindow(nullptr);
+#endif
+	}
 	if (device && !drawFences.empty())
 	{
 		std::vector<vk::Fence> allFences = vk::uniqueToRaw(drawFences);
@@ -1253,6 +1708,7 @@ void VulkanContext::term()
 	swapChain.reset();
 	imageViews.clear();
 	framebuffers.clear();
+	gbFramePresenterFrames.clear();
 	renderPass.reset();
 	quadDrawer.reset();
 	quadPipeline.reset();
@@ -1266,6 +1722,7 @@ void VulkanContext::term()
 	imageAcquiredSemaphores.clear();
 	renderCompleteSemaphores.clear();
 	drawFences.clear();
+	gbFramePresenterFrames.clear();
 	allocator.Term();
 #ifndef USE_SDL
 	surface.reset();
@@ -1458,6 +1915,9 @@ void VulkanContext::Create(void *window, void *display) {
 VulkanContext::VulkanContext(void *window, void *display)
 	: GraphicsContext(window, display)
 {
+	#if defined(__ANDROID__)
+	gbFramePresenter = true;
+	#endif
 	if (!init())
 		throw FlycastException("Vulkan initialization failed");
 }

@@ -93,6 +93,8 @@ public:
 #include <vector>
 
 struct ImDrawData;
+struct AndroidPresenterFrame;
+struct AndroidPresenterImage;
 
 class VulkanContext : public GraphicsContext, public FlightManager
 {
@@ -120,7 +122,7 @@ public:
 	vk::DescriptorPool GetDescriptorPool() const { return *descriptorPool; }
 	vk::Extent2D GetViewPort() const { return { (u32)settings.display.width, (u32)settings.display.height }; }
 	vk::SwapchainKHR GetSwapChain() const { return *swapChain; }
-	u32 GetSwapChainSize() const { return (u32)imageViews.size(); }
+	u32 GetSwapChainSize() const { return gbFramePresenter ? (u32)gbFramePresenterFrames.size() : (u32)imageViews.size(); }
 	int GetCurrentImageIndex() const { return currentImage; }
 	void WaitIdle() const;
 	bool IsRendering() const { return rendering; }
@@ -201,6 +203,9 @@ private:
 	bool init();
 	void term();
 	void CreateSwapChain();
+	void CreateGBFramePresenterTargets();
+	void FlushGBFramePresenterFrames(bool wait);
+	void DestroyGBFramePresenterImages();
 	bool InitDevice();
 	bool InitInstance(const char** extensions, uint32_t extensions_count);
 	void InitImgui();
@@ -218,6 +223,10 @@ private:
 	u32 height = 0;
 	bool resized = false;
 	bool swapOnVSync = true;
+	bool gbFramePresenter = false;
+	bool gbFramePresenterAHBInterop = false;
+	int gbFramePresenterLastFilter = -1;
+	int gbFramePresenterLastShader = -1;
 	vk::UniqueInstance instance;
 	vk::PhysicalDevice physicalDevice;
 
@@ -280,6 +289,8 @@ private:
 
 	std::unique_ptr<VulkanOverlay> overlay;
 	std::vector<std::vector<std::unique_ptr<Deletable>>> inFlightObjects;
+	std::vector<std::unique_ptr<AndroidPresenterFrame>> gbFramePresenterFrames;
+	std::vector<std::unique_ptr<AndroidPresenterImage>> gbFramePresenterImages;
 
 	std::string driverName;
 	std::string driverVersion;

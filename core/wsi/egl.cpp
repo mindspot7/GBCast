@@ -231,7 +231,9 @@ void EGLGraphicsContext::term()
 #ifdef __ANDROID__
 bool EGLGraphicsContext::presenterActive() const
 {
-	return config::PresenterShader != 0;
+	// Bilinear is the direct renderer's default. Route frames through the shared presenter when the user selects
+	// a post-process shader or a non-default output filter.
+	return config::PresenterShader != 0 || config::PresenterFilter != 1;
 }
 
 // Moves the game between the window (plain output) and an off-screen surface (presenter). Runs on the render thread:

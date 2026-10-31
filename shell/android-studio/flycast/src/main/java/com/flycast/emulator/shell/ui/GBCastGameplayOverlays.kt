@@ -10,7 +10,6 @@ import androidx.compose.ui.unit.dp
 import com.flycast.emulator.emu.JNIdc
 import gb.frame.PerfOptions
 import gb.frame.PerfOverlay
-import gb.frame.RaNotifications
 import gb.frame.GameplayOverlayChrome
 import gb.frame.gameOverlayInsets
 import kotlinx.coroutines.delay
@@ -40,7 +39,7 @@ object GBCastOverlayOptions : gb.frame.MonitoringSettings {
 }
 
 @Composable
-fun GBCastGameplayOverlays(menuOpen: Boolean, onMenu: () -> Unit) {
+fun GBCastGameplayOverlays(onMenu: () -> Unit) {
     var stats by remember { mutableStateOf(intArrayOf(0, 640, 480, 60, 0, 0)) }
     var fps by remember { mutableFloatStateOf(0f) }
     var notice by remember { mutableStateOf<String?>(null) }
@@ -51,10 +50,12 @@ fun GBCastGameplayOverlays(menuOpen: Boolean, onMenu: () -> Unit) {
         while (true) {
             val now = System.nanoTime()
             val next = JNIdc.overlayStats()
-            if (next.size >= 6 && now - lastTime >= 900_000_000) {
+            if (next.size >= 6 && JNIdc.guiState() != 0) {
+                // Paused: keep the last reading on screen and leave the paused time out of the next one
+                lastCount = next[0]; lastTime = now; stats = next
+            } else if (next.size >= 6 && now - lastTime >= 900_000_000) {
                 val count = next[0]
-                fps = if (lastCount >= 0 && count >= lastCount && JNIdc.guiState() == 0)
-                    (count - lastCount) * 1_000_000_000f / (now - lastTime) else 0f
+                if (lastCount >= 0 && count >= lastCount) fps = (count - lastCount) * 1_000_000_000f / (now - lastTime)
                 lastCount = count; lastTime = now; stats = next
             }
             JNIdc.pollOverlayMessage()?.let { notice = it; noticeAt = now }
@@ -63,25 +64,20 @@ fun GBCastGameplayOverlays(menuOpen: Boolean, onMenu: () -> Unit) {
         }
     }
     Box(Modifier.fillMaxSize()) {
-        if (!menuOpen) {
-            // The kit's in-game chrome, placed the same way in every app (gb.frame.GameplayOverlayChrome)
-            GameplayOverlayChrome(
-                onMenu = onMenu,
-                showFastForwardButton = GBCastOverlayOptions.showFfButton, fastForward = DreamcastControls.fastForwardActive,
-                onFastForward = { DreamcastControls.setFastForward(!DreamcastControls.fastForwardActive) },
-                message = notice,
-                perf = { m ->
-                    PerfOverlay(GBCastOverlayOptions.options, "GBCast", fps, stats.getOrElse(3) { 60 }.toFloat().coerceAtLeast(1f),
-                        when (stats.getOrElse(4) { 0 }) { 4 -> "Vulkan"; 5 -> "Vulkan OIT"; 3 -> "OpenGL OIT"; else -> "OpenGL ES" },
-                        stats.getOrElse(1) { 640 }, stats.getOrElse(2) { 480 }, if (fps > 0f) 1000f / fps else 0f,
-                        gpuName = { JNIdc.overlayGpuName().orEmpty() }, modifier = m)
-                },
-            )
-            if (stats.getOrElse(5) { 0 } != 0) Text("Fast-forward", color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.align(Alignment.BottomEnd).gameOverlayInsets().padding(12.dp))
-        } else {
-            // The quick menu covers the chrome; achievement notifications still show over it
-            RaNotifications(Modifier.align(Alignment.TopCenter).gameOverlayInsets().padding(top = 56.dp))
-        }
+        // The kit's in-game chrome, placed the same way in every app (gb.frame.GameplayOverlayChrome)
+        GameplayOverlayChrome(
+            onMenu = onMenu,
+            showFastForwardButton = GBCastOverlayOptions.showFfButton, fastForward = DreamcastControls.fastForwardActive,
+            onFastForward = { DreamcastControls.setFastForward(!DreamcastControls.fastForwardActive) },
+            message = notice,
+            perf = { m ->
+                PerfOverlay(GBCastOverlayOptions.options, "GBCast", fps, stats.getOrElse(3) { 60 }.toFloat().coerceAtLeast(1f),
+                    when (stats.getOrElse(4) { 0 }) { 4 -> "Vulkan"; 5 -> "Vulkan OIT"; 3 -> "OpenGL OIT"; else -> "OpenGL ES" },
+                    stats.getOrElse(1) { 640 }, stats.getOrElse(2) { 480 }, if (fps > 0f) 1000f / fps else 0f,
+                    gpuName = { JNIdc.overlayGpuName().orEmpty() }, modifier = m)
+            },
+        )
+        if (stats.getOrElse(5) { 0 } != 0) Text("Fast-forward", color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.align(Alignment.BottomEnd).gameOverlayInsets().padding(12.dp))
     }
 }

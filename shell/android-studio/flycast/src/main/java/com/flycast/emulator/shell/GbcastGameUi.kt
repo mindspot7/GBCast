@@ -79,7 +79,7 @@ object GbcastGameUi {
             setContent {
                 GBCastTheme {
                     androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
-                        com.flycast.emulator.shell.ui.GBCastGameplayOverlays(visible) { onAndroidBack(activity) }
+                        com.flycast.emulator.shell.ui.GBCastGameplayOverlays { onAndroidBack(activity) }
                         if (visible) QuickMenu(activity)
                     }
                     androidx.compose.runtime.LaunchedEffect(activity) {

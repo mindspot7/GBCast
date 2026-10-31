@@ -402,6 +402,13 @@ object GbcastGameUi {
                     id = "auto-frame-skip", icon = androidx.compose.material.icons.Icons.Default.Speed,
                     label = "Auto frame skip", value = skips[skipIndex].second,
                 ) { setInt("config", "pvr.AutoSkipFrame", skips[(skipIndex + 1) % skips.size].first) }
+                val cdSpeeds = listOf(2 to "Original", 4 to "4x", 8 to "8x", 16 to "16x")
+                val cdSpeed = currentInt("config", "Dreamcast.CdReadSpeed")
+                val cdIndex = cdSpeeds.indexOfFirst { it.first == cdSpeed }.let { if (it < 0) 0 else it }
+                gb.frame.QuickMenuItemRow(
+                    id = "cd-read-speed", icon = androidx.compose.material.icons.Icons.Default.Speed,
+                    label = "CD read speed", value = cdSpeeds[cdIndex].second,
+                ) { setInt("config", "Dreamcast.CdReadSpeed", cdSpeeds[(cdIndex + 1) % cdSpeeds.size].first) }
                 val frameRatePatch = com.flycast.emulator.shell.ui.GBCastCheatsBackend.frameRatePatch
                 if (frameRatePatch != null) {
                     gb.frame.FrameRateHackItem(

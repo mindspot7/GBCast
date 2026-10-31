@@ -400,6 +400,12 @@ private fun PerformancePage(tick: Int, cfg: Cfg) {
         ChoiceRow("Auto frame skip", "pvr.AutoSkipFrame", listOf("Off", "Normal", "Max"), cfg.int("config", "pvr.AutoSkipFrame").coerceIn(0, 2)) {
             cfg.setInt("config", "pvr.AutoSkipFrame", it)
         }
+        SettingsDivider()
+        val cdSpeeds = listOf(2, 4, 8, 16)
+        ChoiceRow("CD read speed", "Shorter loading screens. Original is the Dreamcast speed; use it if a game with streamed video or music goes out of sync",
+            listOf("Original", "4x", "8x", "16x"), cdSpeeds.indexOf(cfg.int("config", "Dreamcast.CdReadSpeed")).coerceAtLeast(0)) {
+            cfg.setInt("config", "Dreamcast.CdReadSpeed", cdSpeeds[it])
+        }
     }
 }
 

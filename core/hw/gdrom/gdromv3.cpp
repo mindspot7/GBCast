@@ -1220,8 +1220,8 @@ static int getGDROMTicks()
 			return 512;
 		u32 len = SB_GDLEN == 0 ? 0x02000000 : SB_GDLEN;
 		if (len - SB_GDLEND > 10240)
-			// Large transfers: GD-ROM transfer rate 1.8 MB/s
-			return sh4CyclesForXfer(10240, 1'800'000);
+			// Large transfers: GD-ROM transfer rate 1.8 MB/s, scaled by the CD read speed (2 = original)
+			return sh4CyclesForXfer(10240, 1'800'000 * (config::CdReadSpeed < 2 ? 2 : (int)config::CdReadSpeed) / 2);
 		else
 			// Small transfers: Max G1 bus rate: 50 MHz x 16 bits
 			// ...slowed down to 25 MB/s for wsb2k2

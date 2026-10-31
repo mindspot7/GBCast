@@ -24,6 +24,8 @@
 #if !defined(USE_SDL) && !defined(LIBRETRO) && (defined(__ANDROID__) || defined(SUPPORT_X11))
 #define USE_EGL
 #include <glad/egl.h>
+#include <cstdint>
+#include <vector>
 
 class EGLGraphicsContext : public GLGraphicsContext
 {
@@ -39,6 +41,11 @@ protected:
 	void term();
 	bool makeCurrent();
 	void changeSwapInterval();
+#ifdef __ANDROID__
+	// Shaders and filters of the kit's presenter: the game renders off-screen and each frame goes to the presenter
+	bool presenterActive() const;
+	void presentThroughPresenter();
+#endif
 
 	EGLDisplay display = EGL_NO_DISPLAY;
 	EGLSurface surface = EGL_NO_SURFACE;
@@ -46,5 +53,8 @@ protected:
 	bool swapOnVSync = false;
 	int maxSwapInterval = 1;
 	int currentSwapInterval = 1;
+#ifdef __ANDROID__
+	std::vector<uint32_t> presenterPixels;
+#endif
 };
 #endif

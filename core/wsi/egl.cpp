@@ -27,6 +27,8 @@
 
 #ifdef __ANDROID__
 #include <android/native_window.h> // requires ndk r5 or newer
+#include "gl_renderer.hpp"
+#include <algorithm>
 #endif
 
 #ifndef SWAPPY
@@ -79,7 +81,7 @@ bool EGLGraphicsContext::init()
 	if (surface == EGL_NO_SURFACE)
 	{
 		EGLint pi32ConfigAttribs[]  = {
-				EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+				EGL_SURFACE_TYPE, EGL_WINDOW_BIT | EGL_PBUFFER_BIT,
 				EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
 				EGL_RED_SIZE, 8,
 				EGL_GREEN_SIZE, 8,
@@ -103,6 +105,20 @@ bool EGLGraphicsContext::init()
 			return false;
 		}
 		ANativeWindow_setBuffersGeometry((ANativeWindow *)window, 0, 0, format);
+#endif
+#ifdef __ANDROID__
+		if (presenterActive())
+		{
+			// The presenter draws into the window; the game renders into an off-screen surface of the same size
+			ANativeWindow *nativeWindow = (ANativeWindow *)window;
+			ANativeWindow_acquire(nativeWindow); // SetWindow takes ownership of one reference
+			glr::SetWindow(nativeWindow);
+			glr::SetOptions(config::PresenterFilter, config::PresenterShader);
+			glr::SetColorCorrection(0);
+			EGLint pbufferAttrs[] = { EGL_WIDTH, ANativeWindow_getWidth(nativeWindow), EGL_HEIGHT, ANativeWindow_getHeight(nativeWindow), EGL_NONE };
+			surface = eglCreatePbufferSurface(display, config, pbufferAttrs);
+		}
+		else
 #endif
 		surface = eglCreateWindowSurface(display, config, (EGLNativeWindowType)window, nullptr);
 
@@ -183,6 +199,10 @@ bool EGLGraphicsContext::init()
 void EGLGraphicsContext::term()
 {
 	preTerm();
+#ifdef __ANDROID__
+	if (presenterActive())
+		glr::SetWindow(nullptr); // releases the window reference taken in init()
+#endif
 
 	if (display != EGL_NO_DISPLAY)
 	{
@@ -204,10 +224,39 @@ void EGLGraphicsContext::term()
 	display = EGL_NO_DISPLAY;
 }
 
+#ifdef __ANDROID__
+bool EGLGraphicsContext::presenterActive() const
+{
+	return config::PresenterShader != 0;
+}
+
+// Reads the off-screen frame (OpenGL rows start at the bottom) and hands it to the presenter, top row first
+void EGLGraphicsContext::presentThroughPresenter()
+{
+	EGLint w, h;
+	eglQuerySurface(display, surface, EGL_WIDTH, &w);
+	eglQuerySurface(display, surface, EGL_HEIGHT, &h);
+	presenterPixels.resize((size_t)w * h);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, presenterPixels.data());
+	for (EGLint y = 0; y < h / 2; y++)
+		std::swap_ranges(presenterPixels.begin() + (size_t)y * w, presenterPixels.begin() + (size_t)(y + 1) * w,
+						 presenterPixels.begin() + (size_t)(h - 1 - y) * w);
+	glr::Submit(presenterPixels.data(), w, h, 1);
+}
+#endif
+
 void EGLGraphicsContext::swap()
 {
 	do_swap_automation();
 	changeSwapInterval();
+#ifdef __ANDROID__
+	if (presenterActive())
+	{
+		presentThroughPresenter();
+		return;
+	}
+#endif
 	eglSwapBuffers(display, surface);
 }
 

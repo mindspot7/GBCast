@@ -51,7 +51,7 @@ void EGLGraphicsContext::Create(void *window, void *display) {
 SwappyGLGC::SwappyGLGC(void *window, void *display)
 	: EGLGraphicsContext(window, display)
 {
-	activate(config::FramePacing);
+	activate(config::FramePacing && !presenterActive());
 }
 
 SwappyGLGC::~SwappyGLGC() {
@@ -85,10 +85,14 @@ void SwappyGLGC::activate(bool enable)
 
 void SwappyGLGC::swap()
 {
-	activate(config::FramePacing);
+	// With a shader or filter the kit's presenter owns the window: frames go to it and Swappy stays off
+	const bool presenter = presenterActive();
+	activate(config::FramePacing && !presenter);
 	do_swap_automation();
 	changeSwapInterval();
-	if (swapOnVSync && swappyAvailable)
+	if (presenter)
+		presentThroughPresenter();
+	else if (swapOnVSync && swappyAvailable)
 		SwappyGL_swap(display, surface);
 	else
 		eglSwapBuffers(display, surface);

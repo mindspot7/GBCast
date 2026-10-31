@@ -259,6 +259,10 @@ static int getSkip() { return config::SkipFrame; }
 static void setSkip(int v) { config::SkipFrame = v; }
 static int getAutoSkip() { return config::AutoSkipFrame; }
 static void setAutoSkip(int v) { config::AutoSkipFrame = v; }
+static int getPresenterShader() { return config::PresenterShader; }
+static void setPresenterShader(int v) { config::PresenterShader = v; }
+static int getPresenterFilter() { return config::PresenterFilter; }
+static void setPresenterFilter(int v) { config::PresenterFilter = std::clamp(v, 0, 1); }
 
 static int getScreenStretching() { return config::ScreenStretching; }
 static void setScreenStretching(int v) { config::ScreenStretching = std::clamp(v, 100, 250); }
@@ -281,6 +285,8 @@ static const IntOpt kInts[] = {
 	{"config", "Dreamcast.SavestateSlot", getSlot, setSlot},
 	{"config", "ta.skip", getSkip, setSkip},
 	{"config", "pvr.AutoSkipFrame", getAutoSkip, setAutoSkip},
+	{"config", "GBCast.Shader", getPresenterShader, setPresenterShader},
+	{"config", "GBCast.Filter", getPresenterFilter, setPresenterFilter},
 };
 
 static bool same(const char *a, const std::string &b) { return b == a; }

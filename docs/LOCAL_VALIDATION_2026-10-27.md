@@ -1,5 +1,30 @@
 # Local validation: shared data folder, monitoring and Android Back
 
+## Shared video/performance settings and measured profile (2026-10-31)
+
+- GBFrame now owns the reusable GBCast rows for renderer, enhanced resolution,
+  core texture filtering, GBFrame shader/output filter, Dynarec, auto frame skip,
+  Fast CD load, CD read speed, Dreamcast region/broadcast/RAM, and the recommended
+  settings toggle. GBCast only maps these controls to Flycast values and JNI.
+- The new profile path reads the app's GBFrame `game_profiles.json` before launch,
+  then applies temporary Flycast option overrides after core per-game settings are
+  loaded. Existing saved per-game settings take precedence and remain unmodified;
+  unmatched games retain global settings.
+- The RG Rotate measured profile matched Crazy Taxi at GBFrame tier `low` and
+  queued Vulkan. Boot logs confirmed `renderer=4`, native `resolution=480`, and
+  `autoSkip=0`; the user savestate loaded and the game remained in
+  `NativeGLActivity`. This verifies profile lookup/application and boot, not a new
+  frame-rate benchmark. Prior validation recorded 60.6 FPS / 101.1% in the Vulkan
+  title/attract sequence; only the renderer is encoded because that is the only
+  profile setting supported by recorded measurements.
+- Local release build 10 was signed with the configured GBCast release key and
+  installed as an update on RG Rotate without clearing app data. The profile
+  toggle defaults on. No GitHub workflow was triggered.
+- Settings reference: `docs/SETTINGS_REFERENCE.md`. No separate Threaded audio or
+  CPU Sync controls were added because Flycast exposes neither as a user setting;
+  Oboe already supplies callback-driven audio, and Threaded rendering only
+  separates PVR work from the emulation thread.
+
 - GBFrame is the source for `AppDataFolder`, `DataFolderSync`, the wizard/System
   controls and `MonitoringSettings` (main Video and quick-menu Overlays).
 - GBCast mounts native `data` and library `covers`. Optional custom textures use

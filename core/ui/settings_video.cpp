@@ -198,10 +198,12 @@ void gui_settings_video()
         }
         ImGui::SameLine(0, innerSpacing);
 
-        ImGui::Text("%s", T("Internal Resolution"));
+        ImGui::Text("%s", T("Enhanced resolution"));
         ImGui::SameLine();
         ShowHelpMarker(T("Internal render resolution. Higher is better, but more demanding on the GPU. Values higher than your display resolution (but no more than double your display resolution) can be used for supersampling, which provides high-quality antialiasing without reducing sharpness."));
+		#ifndef __ANDROID__
 		OptionCheckbox(T("Integer Scaling"), config::IntegerScale, T("Scales the output by the maximum integer multiple allowed by the display resolution."));
+		#endif
 		OptionCheckbox(T("Linear Interpolation"), config::LinearInterpolation, T("Scales the output with linear interpolation. Will use nearest neighbor interpolation otherwise. Disable with integer scaling."));
 #ifndef TARGET_IPHONE
     	OptionCheckbox(T("VSync"), config::VSync, T("Synchronizes the frame rate with the screen refresh rate. Recommended"));
@@ -252,7 +254,9 @@ void gui_settings_video()
     			T("Modify the game so that it displays in 16:9 anamorphic format and use horizontal screen stretching. Only some games are supported."));
     	OptionSlider(T("Horizontal Stretching"), config::ScreenStretching, 100, 250,
     			T("Stretch the screen horizontally"), "%d%%");
-    	OptionCheckbox(T("Rotate Screen 90°"), config::Rotate90, T("Rotate the screen 90° counterclockwise"));
+		#ifndef __ANDROID__
+		OptionCheckbox(T("Rotate Screen 90°"), config::Rotate90, T("Rotate the screen 90° counterclockwise"));
+		#endif
     }
 	if (perPixel)
 	{

@@ -60,6 +60,7 @@ object GBCastBridge {
         val app = context.applicationContext as Emulator
         val prefs = android.preference.PreferenceManager.getDefaultSharedPreferences(app)
         displayPrefs = prefs
+        gb.frame.GameProfiles.init(app)
         Storage.gamesDir = prefs.getString(PREF_GAMES, "") ?: ""
         Storage.start(app)
         HomeTheme.init(prefs)
@@ -167,6 +168,13 @@ object GBCastBridge {
 
     // Display mode: the global choice (Settings) and one per game (the in-game menu), applied when a game starts
     private lateinit var displayPrefs: android.content.SharedPreferences
+    val useRecommendedSettingsPerGame: Boolean
+        get() = ::displayPrefs.isInitialized && displayPrefs.getBoolean("recommendedSettingsPerGame", true)
+
+    fun setRecommendedSettingsPerGame(enabled: Boolean) {
+        displayPrefs.edit().putBoolean("recommendedSettingsPerGame", enabled).apply()
+    }
+
     private fun displayKey(game: String) = "display:" + SaveData.gameFolderName(game)
     fun setGlobalDisplay(mode: DisplayMode) {
         displayPrefs.edit().putString("display", mode.name).apply()
@@ -204,6 +212,7 @@ object GBCastBridge {
         }
         val opened = withContext(Dispatchers.IO) { Storage.openForCore(safPath) }
             ?: return "Could not open this game. Check the folder permission and the disc files."
+        queueRecommendedProfile(safPath)
         disc?.close()
         disc = opened
         PlayTime.update(safPath, true)
@@ -235,6 +244,40 @@ object GBCastBridge {
             return "Could not start this game."
         }
         return null
+    }
+
+    private fun queueRecommendedProfile(safPath: String) {
+        if (!useRecommendedSettingsPerGame) {
+            android.util.Log.i("GBCastProfile", "Measured per-game settings are disabled")
+            JNIdc.setRecommendedProfile(false, -1, -1, -1, -1, -1, -1, -1, -1)
+            return
+        }
+        val title = Storage.cachedScan(Storage.gamesDir).firstOrNull { it.path == safPath }?.title
+            ?: java.io.File(safPath.substringBefore('?')).nameWithoutExtension
+        val tier = DeviceTier.detect().tier
+        val profile = gb.frame.GameProfiles.lookup(title, null, tier)
+        android.util.Log.i("GBCastProfile", if (profile.isEmpty()) {
+            "No measured profile for '$title' on ${tier.key}"
+        } else {
+            "Queued measured profile for '$title' on ${tier.key}: ${profile.keys.sorted().joinToString()}"
+        })
+        val renderer = when (profile["renderer"] as? String) {
+            "opengl" -> 0
+            "opengl_oit" -> 3
+            "vulkan" -> 4
+            "vulkan_oit" -> 5
+            else -> -1
+        }
+        JNIdc.setRecommendedProfile(
+            profile.isNotEmpty(), renderer,
+            (profile["resolution"] as? Number)?.toInt() ?: -1,
+            (profile["autoFrameSkip"] as? Number)?.toInt() ?: -1,
+            (profile["dynarec"] as? Boolean)?.let { if (it) 1 else 0 } ?: -1,
+            (profile["threadedRendering"] as? Boolean)?.let { if (it) 1 else 0 } ?: -1,
+            (profile["textureFiltering"] as? Number)?.toInt() ?: -1,
+            (profile["fastCdLoad"] as? Boolean)?.let { if (it) 1 else 0 } ?: -1,
+            (profile["cdReadSpeed"] as? Number)?.toInt() ?: -1,
+        )
     }
 
     private fun stateLabel(slot: Int) = if (slot == AUTO_SAVE_SLOT) "auto" else (slot + 1).toString()

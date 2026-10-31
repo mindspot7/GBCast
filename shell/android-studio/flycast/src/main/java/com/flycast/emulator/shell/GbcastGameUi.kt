@@ -300,30 +300,17 @@ object GbcastGameUi {
                     ) { setBool("config", key, !currentBool("config", key)) }
                 }
 
-                val filters = listOf(1 to "Nearest", 2 to "Bilinear")
-                val filter = currentInt("config", "rend.TextureFiltering")
-                val filterIndex = filters.indexOfFirst { it.first == filter }.let { if (it < 0) 1 else it }
-                gb.frame.QuickMenuItemRow(
-                    id = "texture-filter", icon = androidx.compose.material.icons.Icons.Default.Tune,
-                    label = "Texture filtering", value = filters[filterIndex].second,
-                ) { setInt("config", "rend.TextureFiltering", filters[(filterIndex + 1) % filters.size].first) }
+                gb.frame.TextureFilterQuickMenuItem(currentInt("config", "rend.TextureFiltering")) {
+                    setInt("config", "rend.TextureFiltering", it)
+                }
 
                 // The kit's presenter (shaders and filters) draws the OpenGL ES renderers' frames, applied at once
                 if (renderer == 0 || renderer == 3) {
-                    val shaders = gb.frame.Shaders.menuOrder
-                    val shaderIndex = shaders.indexOf(currentInt("config", "GBCast.Shader")).let { if (it < 0) 0 else it }
-                    gb.frame.QuickMenuItemRow(
-                        id = "shader", icon = androidx.compose.material.icons.Icons.Default.Tune,
-                        label = "Shader", value = gb.frame.Shaders.name(shaders[shaderIndex]),
-                    ) {
-                        setInt("config", "GBCast.Shader", shaders[(shaderIndex + 1) % shaders.size])
+                    gb.frame.ShaderQuickMenuItem(currentInt("config", "GBCast.Shader")) {
+                        setInt("config", "GBCast.Shader", it)
                     }
-                    val presenterFilter = currentInt("config", "GBCast.Filter").coerceIn(0, 1)
-                    gb.frame.QuickMenuItemRow(
-                        id = "presenter-filter", icon = androidx.compose.material.icons.Icons.Default.Tune,
-                        label = "Filter", value = if (presenterFilter == 0) "Nearest" else "Bilinear",
-                    ) {
-                        setInt("config", "GBCast.Filter", if (presenterFilter == 0) 1 else 0)
+                    gb.frame.PictureFilterQuickMenuItem(currentInt("config", "GBCast.Filter"), id = "presenter-filter") {
+                        setInt("config", "GBCast.Filter", it)
                     }
                 }
 
@@ -385,30 +372,32 @@ object GbcastGameUi {
             gb.frame.QuickMenuPage("performance", "Performance") {
 
                 for ((key, label) in listOf(
-                    "Dynarec.Enabled" to "CPU recompiler (Dynarec)",
                     "rend.ThreadedRendering" to "Threaded rendering",
                     "rend.FramePacing" to "Frame pacing",
-                    "FastGDRomLoad" to "Fast CD load",
                 )) {
                     gb.frame.QuickMenuItemRow(
                         id = key, icon = androidx.compose.material.icons.Icons.Default.Speed,
                         label = label, value = if (currentBool("config", key)) "On" else "Off",
                     ) { setBool("config", key, !currentBool("config", key)) }
                 }
-                val skips = listOf(0 to "Off", 1 to "Normal", 2 to "Max")
+                gb.frame.CpuRecompilerQuickMenuItem(currentBool("config", "Dynarec.Enabled")) {
+                    setBool("config", "Dynarec.Enabled", it)
+                }
+                gb.frame.FastCdLoadQuickMenuItem(currentBool("config", "FastGDRomLoad")) {
+                    setBool("config", "FastGDRomLoad", it)
+                }
                 val skip = currentInt("config", "pvr.AutoSkipFrame")
-                val skipIndex = skips.indexOfFirst { it.first == skip }.let { if (it < 0) 0 else it }
-                gb.frame.QuickMenuItemRow(
-                    id = "auto-frame-skip", icon = androidx.compose.material.icons.Icons.Default.Speed,
-                    label = "Auto frame skip", value = skips[skipIndex].second,
-                ) { setInt("config", "pvr.AutoSkipFrame", skips[(skipIndex + 1) % skips.size].first) }
-                val cdSpeeds = listOf(2 to "Original", 4 to "4x", 8 to "8x", 16 to "16x")
+                gb.frame.AutoFrameSkipQuickMenuItem(skip) { setInt("config", "pvr.AutoSkipFrame", it) }
+                val cdSpeeds = listOf(
+                    gb.frame.CdReadSpeedOption(2, "Original"),
+                    gb.frame.CdReadSpeedOption(4, "4x"),
+                    gb.frame.CdReadSpeedOption(8, "8x"),
+                    gb.frame.CdReadSpeedOption(16, "16x"),
+                )
                 val cdSpeed = currentInt("config", "Dreamcast.CdReadSpeed")
-                val cdIndex = cdSpeeds.indexOfFirst { it.first == cdSpeed }.let { if (it < 0) 0 else it }
-                gb.frame.QuickMenuItemRow(
-                    id = "cd-read-speed", icon = androidx.compose.material.icons.Icons.Default.Speed,
-                    label = "CD read speed", value = cdSpeeds[cdIndex].second,
-                ) { setInt("config", "Dreamcast.CdReadSpeed", cdSpeeds[(cdIndex + 1) % cdSpeeds.size].first) }
+                gb.frame.CdReadSpeedQuickMenuItem(cdSpeed, cdSpeeds) {
+                    setInt("config", "Dreamcast.CdReadSpeed", it)
+                }
                 val frameRatePatch = com.flycast.emulator.shell.ui.GBCastCheatsBackend.frameRatePatch
                 if (frameRatePatch != null) {
                     gb.frame.FrameRateHackItem(

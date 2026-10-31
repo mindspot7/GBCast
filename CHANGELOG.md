@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Move shared renderer, enhanced-resolution, filtering, shader, frame-skip, recompiler, and CD-load controls into GBFrame; add measured per-game recommendations with global settings as fallback.
+- Remove Integer scaling, Rotate 90°, and crash-report upload controls from Android settings.
+- Keep CD read speed separate from Fast CD load and clarify Dreamcast RAM, region, and renderer behavior.
 - Use GBFrame's shared widescreen game hacks toggle in Video settings and the in-game Video menu.
 - Move supported 60 FPS patches to the in-game Performance menu; enable them by default for compatible games, except in RetroAchievements Hardcore.
 

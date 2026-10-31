@@ -1,4 +1,5 @@
 #include "gbcast_skip.h"
+#include "gbcast_profile.h"
 #include <jni.h>
 
 #include "cfg/option.h"
@@ -366,6 +367,13 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_flycast_emulator_emu_JNIdc_hasPer
 extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_setPerGameConfig(JNIEnv *, jclass, jboolean enabled) {
 	config::Settings::instance().setPerGameConfig(enabled == JNI_TRUE);
 	SaveSettings();
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_flycast_emulator_emu_JNIdc_setRecommendedProfile(
+		JNIEnv *, jclass, jboolean enabled, jint renderer, jint resolution, jint autoSkip,
+		jint dynarec, jint threadedRendering, jint textureFiltering, jint fastCdLoad, jint cdReadSpeed) {
+	gbcast::setRecommendedProfile(enabled == JNI_TRUE, renderer, resolution, autoSkip,
+		dynarec, threadedRendering, textureFiltering, fastCdLoad, cdReadSpeed);
 }
 
 extern "C" JNIEXPORT jstring JNICALL Java_com_flycast_emulator_emu_JNIdc_dataDirectory(JNIEnv *env, jclass) {

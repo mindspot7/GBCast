@@ -1,0 +1,9 @@
+{
+  "about": "Measured Dreamcast recommendations by game and GBFrame device tier. The RG Rotate Crazy Taxi profile is based on the documented Vulkan title/attract run at 60.6 FPS (101.1%). Only measured settings are included; unspecified settings inherit the user's global settings. Saved per-game overrides always take priority.",
+  "games": [
+    {
+      "titles": ["CRAZY TAXI", "CRAZY TAXI (USA)"],
+      "low": { "renderer": "vulkan" }
+    }
+  ]
+}

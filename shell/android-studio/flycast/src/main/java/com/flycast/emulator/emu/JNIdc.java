@@ -41,6 +41,9 @@ public final class JNIdc
 	public static native void configSave();
 	public static native boolean hasPerGameConfig();
 	public static native void setPerGameConfig(boolean enabled);
+	/** Queue a measured GBFrame profile for the next game boot; -1 means leave an option unchanged. */
+	public static native void setRecommendedProfile(boolean enabled, int renderer, int resolution, int autoSkip,
+			int dynarec, int threadedRendering, int textureFiltering, int fastCdLoad, int cdReadSpeed);
 	public static native String dataDirectory();
 	public static native String currentGamePath();
 	public static native int guiState();

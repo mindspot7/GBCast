@@ -17,6 +17,9 @@
     along with Flycast.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "emulator.h"
+#ifdef __ANDROID__
+#include "gbcast_profile.h"
+#endif
 #include "types.h"
 #include "stdclass.h"
 #include "cfg/option.h"
@@ -893,6 +896,9 @@ void loadGameSpecificSettings()
 		config::WidescreenGameHacks.override(false);
 		config::DynarecEnabled.override(true);
 	}
+#ifdef __ANDROID__
+	gbcast::applyRecommendedProfile();
+#endif
 }
 
 void Emulator::step()

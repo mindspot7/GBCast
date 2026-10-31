@@ -66,7 +66,6 @@ import gb.frame.ActionRow
 import gb.frame.ChoiceRow
 import gb.frame.ControlsPage
 import gb.frame.ControlsCapturePrompts
-import gb.frame.InfoRow
 import gb.frame.SettingsDivider
 import gb.frame.SettingsGroup
 import gb.frame.ToggleRow
@@ -268,29 +267,30 @@ private fun SystemPage(tick: Int, cfg: Cfg, onFolder: () -> Unit, onBios: () -> 
             skipSaveWaits = SystemToggleSetting(cfg.bool("config", "GBFrame.SkipSaveWaits"), { cfg.setBool("config", "GBFrame.SkipSaveWaits", it) }),
         ),
         startupExtras = {
-            ToggleRow(Icons.Default.Speed, "Fast CD load", "Reduce emulated GD-ROM transfer delays. Independent of the automatic skip options; some games require original timing.", cfg.bool("config", "FastGDRomLoad")) {
-                cfg.toggle("config", "FastGDRomLoad")
-            }
+            gb.frame.FastCdLoadSettingsRow(
+                cfg.bool("config", "FastGDRomLoad"),
+                { cfg.setBool("config", "FastGDRomLoad", it) },
+                "Shortens GD-ROM DMA transfer delays. Separate from CD read speed and automatic skips; some games need original timing.",
+            )
         },
         extraSettings = {
             val region = indexOf(tick, intArrayOf(0, 1, 2, 3), cfg.int("config", "Dreamcast.Region"))
-            val cable = indexOf(tick, intArrayOf(0, 2, 3), cfg.int("config", "Dreamcast.Cable"))
             val broadcast = indexOf(tick, intArrayOf(0, 1, 2, 3, 4), cfg.int("config", "Dreamcast.Broadcast"))
             SettingsGroup("Dreamcast", Icons.Default.Tune) {
-                ChoiceRow("Region", "Used the next time a game boots", listOf("Japan", "USA", "Europe", "Default"), region) {
+                gb.frame.DreamcastRegionSettingsRow(region) {
                     cfg.setInt("config", "Dreamcast.Region", intArrayOf(0, 1, 2, 3)[it])
                 }
                 SettingsDivider()
-                ChoiceRow("Cable", "VGA, RGB or composite", listOf("VGA", "RGB", "TV"), cable) {
-                    cfg.setInt("config", "Dreamcast.Cable", intArrayOf(0, 2, 3)[it])
+                gb.frame.DreamcastCableSettingsRow(cfg.int("config", "Dreamcast.Cable")) {
+                    cfg.setInt("config", "Dreamcast.Cable", it)
                 }
                 SettingsDivider()
-                ChoiceRow("Broadcast", null, listOf("NTSC", "PAL", "PAL-M", "PAL-N", "Default"), broadcast) {
+                gb.frame.DreamcastBroadcastSettingsRow(broadcast) {
                     cfg.setInt("config", "Dreamcast.Broadcast", it)
                 }
                 SettingsDivider()
-                ToggleRow(Icons.Default.Memory, "32 MB RAM", "Dreamcast RAM mod. Arcade boards ignore this.", cfg.bool("config", "Dreamcast.RamMod32MB")) {
-                    cfg.toggle("config", "Dreamcast.RamMod32MB")
+                gb.frame.DreamcastRamModSettingsRow(cfg.bool("config", "Dreamcast.RamMod32MB")) {
+                    cfg.setBool("config", "Dreamcast.RamMod32MB", it)
                 }
             }
         },
@@ -304,12 +304,24 @@ private fun VideoPage(tick: Int, cfg: Cfg) {
     val resolutionValues = intArrayOf(480, 960, 1440, 1920)
     val resolution = indexOf(tick, resolutionValues, cfg.int("config", "rend.Resolution"))
     SettingsGroup("Rendering", Icons.Default.Tv) {
-        ChoiceRow("Renderer", "OpenGL ES or Vulkan. Per-pixel uses order-independent transparency.", listOf("GLES", "GLES OIT", "Vulkan", "Vulkan OIT"), renderer) {
-            cfg.setInt("config", "pvr.rend", rendererValues[it])
+        gb.frame.RendererSettingsRow(
+            rendererValues[renderer],
+            rendererValues.mapIndexed { index, id -> gb.frame.RendererChoice(id, listOf("GLES", "GLES OIT", "Vulkan", "Vulkan OIT")[index]) },
+            "GLES and Vulkan are graphics APIs. OIT (order-independent transparency) improves transparent polygon ordering at higher GPU/memory cost.",
+        ) {
+            cfg.setInt("config", "pvr.rend", it)
         }
         SettingsDivider()
-        ChoiceRow("Enhanced resolution", "Sharper 3D sprites and polygons; higher values need a faster GPU. Native matches the screen", listOf("Native", "2x", "3x", "4x"), resolution) {
-            cfg.setInt("config", "rend.Resolution", resolutionValues[it])
+        gb.frame.RecommendedSettingsPerGameRow(GBCastBridge.useRecommendedSettingsPerGame) {
+            GBCastBridge.setRecommendedSettingsPerGame(it)
+            cfg.tick++
+        }
+        SettingsDivider()
+        gb.frame.EnhancedResolutionSettingsRow(
+            resolutionValues[resolution], resolutionValues.toList(), listOf("Native", "2x", "3x", "4x"),
+            "Sharper 3D sprites and polygons; higher values need a faster GPU. Native matches the screen.",
+        ) {
+            cfg.setInt("config", "rend.Resolution", it)
         }
         SettingsDivider()
         ChoiceRow("Display mode", "Fullscreen stretches the picture; Super widescreen expands the view to the screen ratio.",
@@ -323,20 +335,17 @@ private fun VideoPage(tick: Int, cfg: Cfg) {
         SettingsDivider()
         ToggleRow(Icons.Default.Tv, "VSync", "rend.vsync", cfg.bool("config", "rend.vsync")) { cfg.toggle("config", "rend.vsync") }
         SettingsDivider()
-        ChoiceRow("Texture filtering", null, listOf("Nearest", "Bilinear"), if (cfg.int("config", "rend.TextureFiltering") == 1) 0 else 1) {
-            cfg.setInt("config", "rend.TextureFiltering", if (it == 0) 1 else 2)
+        gb.frame.TextureFilterSettingsRow(cfg.int("config", "rend.TextureFiltering")) {
+            cfg.setInt("config", "rend.TextureFiltering", it)
         }
         // The kit's presenter (shaders and filters) draws the OpenGL ES renderers' frames
         if (cfg.int("config", "pvr.rend") in intArrayOf(0, 3)) {
-            val shaders = gb.frame.Shaders.menuOrder
             SettingsDivider()
-            ChoiceRow("Shader", "Picture shader after the frame, applied at once", shaders.map { gb.frame.Shaders.name(it) },
-                shaders.indexOf(cfg.int("config", "GBCast.Shader")).coerceAtLeast(0)) {
-                cfg.setInt("config", "GBCast.Shader", shaders[it])
+            gb.frame.ShaderSettingsRow(cfg.int("config", "GBCast.Shader")) {
+                cfg.setInt("config", "GBCast.Shader", it)
             }
             SettingsDivider()
-            ChoiceRow("Filter", "Scaling of the shaded picture", listOf("Nearest", "Bilinear"),
-                cfg.int("config", "GBCast.Filter").coerceIn(0, 1)) {
+            gb.frame.PictureFilterSettingsRow(cfg.int("config", "GBCast.Filter"), sub = "Scaling of the shaded picture") {
                 cfg.setInt("config", "GBCast.Filter", it)
             }
         }
@@ -389,22 +398,25 @@ private fun AudioPage(tick: Int, cfg: Cfg) {
 @Composable
 private fun PerformancePage(tick: Int, cfg: Cfg) {
     SettingsGroup("Performance", Icons.Default.Speed) {
-        InfoRow("Recommended preset", GBCastBridge.deviceRecommendation())
-        SettingsDivider()
-        ToggleRow(Icons.Default.Speed, "CPU recompiler (Dynarec)","On by default: faster on weak devices and less CPU use on the others, slightly less accurate. Turn off if a game misbehaves", cfg.bool("config", "Dynarec.Enabled")) { cfg.toggle("config", "Dynarec.Enabled") }
+        gb.frame.CpuRecompilerSettingsRow(cfg.bool("config", "Dynarec.Enabled")) {
+            cfg.setBool("config", "Dynarec.Enabled", it)
+        }
         SettingsDivider()
         ToggleRow(Icons.Default.Speed, "Threaded rendering", null, cfg.bool("config", "rend.ThreadedRendering")) { cfg.toggle("config", "rend.ThreadedRendering") }
         SettingsDivider()
         ToggleRow(Icons.Default.Speed, "Frame pacing", null, cfg.bool("config", "rend.FramePacing")) { cfg.toggle("config", "rend.FramePacing") }
         SettingsDivider()
-        ChoiceRow("Auto frame skip", "pvr.AutoSkipFrame", listOf("Off", "Normal", "Max"), cfg.int("config", "pvr.AutoSkipFrame").coerceIn(0, 2)) {
+        gb.frame.AutoFrameSkipSettingsRow(cfg.int("config", "pvr.AutoSkipFrame")) {
             cfg.setInt("config", "pvr.AutoSkipFrame", it)
         }
         SettingsDivider()
         val cdSpeeds = listOf(2, 4, 8, 16)
-        ChoiceRow("CD read speed", "Shorter loading screens. Original is the Dreamcast speed; use it if a game with streamed video or music goes out of sync",
-            listOf("Original", "4x", "8x", "16x"), cdSpeeds.indexOf(cfg.int("config", "Dreamcast.CdReadSpeed")).coerceAtLeast(0)) {
-            cfg.setInt("config", "Dreamcast.CdReadSpeed", cdSpeeds[it])
+        gb.frame.CdReadSpeedSettingsRow(
+            cfg.int("config", "Dreamcast.CdReadSpeed"),
+            cdSpeeds.mapIndexed { index, speed -> gb.frame.CdReadSpeedOption(speed, listOf("Original", "4x", "8x", "16x")[index]) },
+            sub = "Shorter loading screens. Original is the Dreamcast speed; use it if streamed video or music goes out of sync.",
+        ) {
+            cfg.setInt("config", "Dreamcast.CdReadSpeed", it)
         }
     }
 }
